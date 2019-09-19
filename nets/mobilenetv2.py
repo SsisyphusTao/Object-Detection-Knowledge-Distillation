@@ -79,20 +79,20 @@ class ssd_block(nn.Module):
 
 mbox = [4, 6, 6, 6, 4, 4]
 loc = [
-    nn.Conv2d(384, mbox[0] * 4, kernel_size=3, padding=1),
-    nn.Conv2d(1280, mbox[1] * 4, kernel_size=3, padding=1),
+    nn.Conv2d(512, mbox[0] * 4, kernel_size=3, padding=1),
+    nn.Conv2d(1024, mbox[1] * 4, kernel_size=3, padding=1),
     nn.Conv2d(512, mbox[2] * 4, kernel_size=3, padding=1),
     nn.Conv2d(256, mbox[3] * 4, kernel_size=3, padding=1),
     nn.Conv2d(256, mbox[4] * 4, kernel_size=3, padding=1),
-    nn.Conv2d(128, mbox[5] * 4, kernel_size=3, padding=1),
+    nn.Conv2d(256, mbox[5] * 4, kernel_size=3, padding=1),
 ]
 conf = [
-    nn.Conv2d(384, mbox[0] * 21, kernel_size=3, padding=1),
-    nn.Conv2d(1280, mbox[1] * 21, kernel_size=3, padding=1),
+    nn.Conv2d(512, mbox[0] * 21, kernel_size=3, padding=1),
+    nn.Conv2d(1024, mbox[1] * 21, kernel_size=3, padding=1),
     nn.Conv2d(512, mbox[2] * 21, kernel_size=3, padding=1),
     nn.Conv2d(256, mbox[3] * 21, kernel_size=3, padding=1),
     nn.Conv2d(256, mbox[4] * 21, kernel_size=3, padding=1),
-    nn.Conv2d(128, mbox[5] * 21, kernel_size=3, padding=1),
+    nn.Conv2d(256, mbox[5] * 21, kernel_size=3, padding=1),
 ]
 
 class MobileNetV2(nn.Module):
@@ -101,7 +101,7 @@ class MobileNetV2(nn.Module):
         self.num_classes = n_class
         block = InvertedResidual
         input_channel = 32
-        last_channel = 1280
+        last_channel = 1024
         interverted_residual_setting = [
             # t, c, n, s
             [1, 16, 1, 1],
@@ -113,8 +113,8 @@ class MobileNetV2(nn.Module):
             [6, 64, 4, 2],
             [6, 96, 3, 1],
             #19->10
-            [6, 160, 3, 2],
-            [6, 320, 1, 1],
+            # [6, 160, 3, 2],
+            # [6, 320, 1, 1],
         ]
 
         custom_layers_config = [
@@ -139,9 +139,9 @@ class MobileNetV2(nn.Module):
         # assert input_size % 32 == 0
         input_channel = int(input_channel * width_mult)
         self.last_channel = int(last_channel * width_mult) if width_mult > 1.0 else last_channel
-        self.features = [conv_bn(3, input_channel, 1)]
+        self.features = [conv_bn(3, input_channel, 2)]
         # building inverted residual blocks
-        for t, c, n, s in custom_layers_config:
+        for t, c, n, s in interverted_residual_setting:
             output_channel = int(c * width_mult)
             for i in range(n):
                 if i == 0:
@@ -158,19 +158,19 @@ class MobileNetV2(nn.Module):
 
         self.ssd=nn.ModuleList(
         #19->10
-        [ssd_block(1280,256,512,2),
+        [ssd_block(1024,256,512,2),
         #10->5
-        ssd_block(512, 128, 256,2),
+        ssd_block(512,128,256,2),
         #5->3
         ssd_block(256,128,256,2),
         #3->1
-        ssd_block(256,64,128,1)]
+        ssd_block(256,64,256,1)]
         )
 
         self.priorbox = PriorBox(voc)
         with torch.no_grad():
             self.priors = self.priorbox.forward()
-        self.L2Norm = L2Norm(384, 20)
+        self.L2Norm = L2Norm(512, 20)
 
         # # building classifier
         # self.classifier = nn.Sequential(
@@ -179,25 +179,25 @@ class MobileNetV2(nn.Module):
         # )
         self.detect = Detect(n_class, 0, 200, 0.01, 0.45)
         self.softmax = nn.Softmax(dim=-1)
-        self._initialize_weights()
+        # self._initialize_weights()
 
     def forward(self, x):
         sources = []
         loc = []
         conf = []
 
-        for i in range(8):
+        for i in range(7):
             x = self.features[i](x)
 
-        x = nn.Conv2d(64, 384, 1, 1, 0, bias=False).cuda()(x)
+        #adaption layer
+        x = nn.Conv2d(32, 512, 1, 1, 0, bias=False).cuda()(x)
         x = nn.ReLU6(inplace=True).cuda()(x)
         s = self.L2Norm(x)
         sources.append(s)
-        x = nn.Conv2d(384, 384, 3, 2, 1, groups=384, bias=False).cuda()(x)
+        x = nn.Conv2d(512, 512, 3, 2, 1, groups=512, bias=False).cuda()(x)
         x = nn.ReLU6(inplace=True).cuda()(x)
-        x = nn.Conv2d(384, 96, 1, 1, 0, bias=False).cuda()(x)
-        
-        for i in range(9, len(self.features)):
+        x = nn.Conv2d(512, 64, 1, 1, 0, bias=False).cuda()(x)
+        for i in range(8, len(self.features)):
             x = self.features[i](x)
         sources.append(x)
         
