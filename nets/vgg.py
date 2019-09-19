@@ -1,7 +1,6 @@
 import torch
 from torch import nn
 from torch.nn import functional as F
-from torch.autograd import Variable
 from .prior_box import PriorBox
 from .l2norm import L2Norm
 from .detection import Detect
@@ -107,8 +106,8 @@ class vgg_ssd(nn.Module):
         self.num_classes = num_classes
         self.priorbox = PriorBox(voc)
         with torch.no_grad():
-            self.priors = Variable(self.priorbox.forward())
-
+            self.priors = self.priorbox.forward()
+        
         self.vgg = nn.ModuleList(backbone)
         # Layer learns to scale the l2 normalized features from conv4_3
         self.L2Norm = L2Norm(512, 20)
@@ -116,7 +115,7 @@ class vgg_ssd(nn.Module):
 
         self.loc = nn.ModuleList(head[0])
         self.conf = nn.ModuleList(head[1])
-
+        
         self.softmax = nn.Softmax(dim=-1)
         self.detect = Detect(num_classes, 0, 200, 0.01, 0.45)
 
@@ -147,10 +146,11 @@ class vgg_ssd(nn.Module):
         for (x, l, c) in zip(sources, self.loc, self.conf):
             loc.append(l(x).permute(0, 2, 3, 1).contiguous())
             conf.append(c(x).permute(0, 2, 3, 1).contiguous())
+            print(c)
 
         loc = torch.cat([o.view(o.size(0), -1) for o in loc], 1)
         conf = torch.cat([o.view(o.size(0), -1) for o in conf], 1)
-       
+        
         output = self.detect(
             loc.view(loc.size(0), -1, 4),                   # loc preds
             self.softmax(conf.view(conf.size(0), -1,
