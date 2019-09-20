@@ -151,11 +151,11 @@ class vgg_ssd(nn.Module):
         conf = torch.cat([o.view(o.size(0), -1) for o in conf], 1)
         
         output = self.detect(
-            loc.view(loc.size(0), -1, 4),                   # loc preds
+            loc.view(loc.size(0), -1, 4),             # loc preds
             self.softmax(conf.view(conf.size(0), -1,
-                            self.num_classes)),                # conf preds
-            self.priors.type(type(x.data)).cuda()                  # default boxes
-        )
+                            self.num_classes)),       # conf preds
+            self.priors.type(type(x.data)).cuda(),    # default boxes
+        ), s
 
         return output
 

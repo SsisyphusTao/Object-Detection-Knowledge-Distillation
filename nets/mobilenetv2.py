@@ -144,7 +144,13 @@ class MobileNetV2(nn.Module):
         for t, c, n, s in interverted_residual_setting:
             output_channel = int(c * width_mult)
             for i in range(n):
-                if i == 0:
+                if i == 0 and c == 64:
+                    self.features.append(nn.Conv2d(32, 512, 1, 1, 0, bias=False)) #7
+                    self.features.append(nn.ReLU6(inplace=True)) #8
+                    self.features.append(nn.Conv2d(512, 512, 3, 2, 1, groups=512, bias=False)) #9
+                    self.features.append(nn.ReLU6(inplace=True)) #10
+                    self.features.append(nn.Conv2d(512, 64, 1, 1, 0, bias=False)) #11
+                elif i == 0:
                     self.features.append(block(input_channel, output_channel, s, expand_ratio=t))
                 else:
                     self.features.append(block(input_channel, output_channel, 1, expand_ratio=t))
@@ -179,25 +185,21 @@ class MobileNetV2(nn.Module):
         # )
         self.detect = Detect(n_class, 0, 200, 0.01, 0.45)
         self.softmax = nn.Softmax(dim=-1)
-        # self._initialize_weights()
+        self._initialize_weights()
 
     def forward(self, x):
         sources = []
         loc = []
         conf = []
 
-        for i in range(7):
+        for i in range(9):
             x = self.features[i](x)
 
         #adaption layer
-        x = nn.Conv2d(32, 512, 1, 1, 0, bias=False).cuda()(x)
-        x = nn.ReLU6(inplace=True).cuda()(x)
         s = self.L2Norm(x)
         sources.append(s)
-        x = nn.Conv2d(512, 512, 3, 2, 1, groups=512, bias=False).cuda()(x)
-        x = nn.ReLU6(inplace=True).cuda()(x)
-        x = nn.Conv2d(512, 64, 1, 1, 0, bias=False).cuda()(x)
-        for i in range(8, len(self.features)):
+      
+        for i in range(9, len(self.features)):
             x = self.features[i](x)
         sources.append(x)
         
@@ -212,17 +214,18 @@ class MobileNetV2(nn.Module):
         loc = torch.cat([o.view(o.size(0), -1) for o in loc], 1)
         conf = torch.cat([o.view(o.size(0), -1) for o in conf], 1)
 
-        output = self.detect(
-            loc.view(loc.size(0), -1, 4),                   # loc preds
-            self.softmax(conf.view(conf.size(0), -1,
-                            self.num_classes)),                # conf preds
-            self.priors.type(type(x.data)).cuda()                  # default boxes
-        )
-        # output = (
-        #     loc.view(loc.size(0), -1, 4),
-        #     conf.view(conf.size(0), -1, self.num_classes),
-        #     self.priors
+        # output = self.detect(
+        #     loc.view(loc.size(0), -1, 4),                   # loc preds
+        #     self.softmax(conf.view(conf.size(0), -1,
+        #                     self.num_classes)),                # conf preds
+        #     self.priors.type(type(x.data)).cuda()                  # default boxes
         # )
+        output = (
+            loc.view(loc.size(0), -1, 4),
+            conf.view(conf.size(0), -1, self.num_classes),
+            self.priors,
+            s
+        )
         # x = self.features(x)
         # x = x.mean(3).mean(2)
         # x = self.classifier(x)

@@ -3,12 +3,9 @@ from nets import vgg_module
 import cv2 as cv
 import numpy as np
 import time
+from penguin import getsingleimg
 
-img = cv.imread('/home/tao/Pictures/juvenile-penguin.jpg')
-img = show = cv.resize(img, (300,300))
-img = cv.cvtColor(img, cv.COLOR_BGR2RGB)
-img = torch.from_numpy(img).permute(2, 0, 1)
-
+x, show = getsingleimg()
 vgg_test = vgg_module()
 # print(vgg_test)
 
@@ -16,7 +13,6 @@ vgg_test = vgg_module()
 vgg_test.eval()
 vgg_test = vgg_test.cuda()
 torch.backends.cudnn.benchmark = True
-x = img.unsqueeze(0).float().cuda()
 a = time.time()
 r = vgg_test(x).data#.numpy()[0]
 print(time.time()-a)

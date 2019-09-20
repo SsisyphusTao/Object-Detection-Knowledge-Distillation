@@ -3,7 +3,9 @@ from nets import mobilenetv2_module
 import cv2 as cv
 import numpy as np
 import time
+from penguin import getsingleimg
 
+x, show = getsingleimg()
 mobilenetv2_test = mobilenetv2_module()
 
 # for n, block in enumerate(mobilenetv2_test.features):
@@ -12,15 +14,9 @@ mobilenetv2_test = mobilenetv2_module()
 #         print(block)
 #         print('---------------------------------')
 
-img = cv.imread('/home/tao/Pictures/juvenile-penguin.jpg')
-img = show = cv.resize(img, (300,300))
-img = cv.cvtColor(img, cv.COLOR_BGR2RGB)
-img = torch.from_numpy(img).permute(2, 0, 1)
-
 mobilenetv2_test.eval()
 mobilenetv2_test = mobilenetv2_test.cuda()
 torch.backends.cudnn.benchmark = True
-x = img.unsqueeze(0).float().cuda()
 a = time.time()
 r = mobilenetv2_test(x).data#.numpy()[0]
 print(time.time()-a)
