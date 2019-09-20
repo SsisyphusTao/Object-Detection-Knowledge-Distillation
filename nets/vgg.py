@@ -156,7 +156,11 @@ class vgg_ssd(nn.Module):
         #                     self.num_classes)),       # conf preds
         #     self.priors.type(type(x.data)).cuda(),    # default boxes
         # )
-        output = s
+        output = (
+            loc.view(loc.size(0), -1, 4),
+            conf.view(conf.size(0), -1, self.num_classes),
+            s
+        )
 
         return output
 

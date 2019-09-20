@@ -99,9 +99,9 @@ class MultiBoxLoss(nn.Module):
         loc_t = torch.Tensor(num, num_priors, 4) # grond truch
         conf_t = torch.LongTensor(num, num_priors) # ground truch
         for idx in range(num):
-            truths = targets[idx][:, :-1].data
-            labels = targets[idx][:, -1].data
-            defaults = priors.data
+            truths = targets[idx][:, :-1].data.cuda()
+            labels = targets[idx][:, -1].data.cuda()
+            defaults = priors.data.cuda()
             match(self.threshold, truths, defaults, self.variance, labels,
                   loc_t, conf_t, idx) # use priorbox origin positon to match the groud truch to find out which result is to match the grond truth
 

@@ -26,18 +26,13 @@ loss_ssd = criterion.forward(mbv2_pred[:3], mbv2_pred[:2], torch.Tensor([[[40.,2
 
 gamma = 0.5
 total_loss = loss_ssd + gamma * loss_hint
+# first_block = []
+# for name, i in mobilenetv2_test.named_parameters():
+#     name = name.split('.')
+#     if 'features' in name[0] and int(name[1]) <= 7 :
+#         first_block.append(i)
 
-first_block = []
-for name, i in mobilenetv2_test.named_parameters():
-    name = name.split('.')
-    if 'features' in name[0] and int(name[1]) <= 7 :
-        first_block.append(i)
-
-optimizer_hint = optim.SGD(first_block, lr=0.01, momentum=0.9,
-                        weight_decay=5e-4)
 optimizer = optim.SGD(mobilenetv2_test.parameters(), lr=0.01, momentum=0.9,
                         weight_decay=5e-4)
-# loss_hint.backward()
-# optimizer_hint.step()
 total_loss.backward()
 optimizer.step()
