@@ -116,8 +116,8 @@ class vgg_ssd(nn.Module):
         self.loc = nn.ModuleList(head[0])
         self.conf = nn.ModuleList(head[1])
         
-        self.softmax = nn.Softmax(dim=-1)
-        self.detect = Detect(num_classes, 0, 200, 0.01, 0.45)
+        # self.softmax = nn.Softmax(dim=-1)
+        # self.detect = Detect(num_classes, 0, 200, 0.01, 0.45)
 
     def forward(self, x):
         sources = list()
@@ -150,12 +150,13 @@ class vgg_ssd(nn.Module):
         loc = torch.cat([o.view(o.size(0), -1) for o in loc], 1)
         conf = torch.cat([o.view(o.size(0), -1) for o in conf], 1)
         
-        output = self.detect(
-            loc.view(loc.size(0), -1, 4),             # loc preds
-            self.softmax(conf.view(conf.size(0), -1,
-                            self.num_classes)),       # conf preds
-            self.priors.type(type(x.data)).cuda(),    # default boxes
-        ), s
+        # output = self.detect(
+        #     loc.view(loc.size(0), -1, 4),             # loc preds
+        #     self.softmax(conf.view(conf.size(0), -1,
+        #                     self.num_classes)),       # conf preds
+        #     self.priors.type(type(x.data)).cuda(),    # default boxes
+        # )
+        output = s
 
         return output
 

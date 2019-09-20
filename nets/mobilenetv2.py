@@ -183,8 +183,8 @@ class MobileNetV2(nn.Module):
         #     nn.Dropout(0.2),
         #     nn.Linear(self.last_channel, n_class),
         # )
-        self.detect = Detect(n_class, 0, 200, 0.01, 0.45)
-        self.softmax = nn.Softmax(dim=-1)
+        # self.detect = Detect(n_class, 0, 200, 0.01, 0.45)
+        # self.softmax = nn.Softmax(dim=-1)
         self._initialize_weights()
 
     def forward(self, x):

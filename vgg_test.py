@@ -9,7 +9,7 @@ x, show = getsingleimg()
 vgg_test = vgg_module()
 # print(vgg_test)
 
-# vgg_test.load_weights('./models/ssd300_mAP_77.43_v2.pth')
+vgg_test.load_weights('./models/ssd300_mAP_77.43_v2.pth')
 vgg_test.eval()
 vgg_test = vgg_test.cuda()
 torch.backends.cudnn.benchmark = True
@@ -27,6 +27,7 @@ for j in range(1, r.size(1)):
     boxes = boxes.astype(int)
     cv.rectangle(show, (boxes[0],boxes[1]), 
     (boxes[2], 
-     boxes[3]), 255)    
+     boxes[3]), 255)
+print(boxes)    
 # cv.imshow('sdf', show)
 # cv.waitKey()
