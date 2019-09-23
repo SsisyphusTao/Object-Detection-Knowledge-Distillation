@@ -6,7 +6,7 @@ import time
 from penguin import getsingleimg
 
 x, show = getsingleimg()
-vgg_test = vgg_module()
+vgg_test = vgg_module('test')
 # print(vgg_test)
 
 vgg_test.load_weights('./models/ssd300_mAP_77.43_v2.pth')

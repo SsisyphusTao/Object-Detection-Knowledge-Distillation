@@ -96,9 +96,10 @@ conf = [
 ]
 
 class MobileNetV2(nn.Module):
-    def __init__(self, loc, conf, n_class=21, input_size=300, width_mult=1.):
+    def __init__(self, loc, conf, mode, n_class=21, input_size=300, width_mult=1.):
         super(MobileNetV2, self).__init__()
         self.num_classes = n_class
+        self.mode =mode
         block = InvertedResidual
         input_channel = 32
         last_channel = 1024
@@ -214,18 +215,20 @@ class MobileNetV2(nn.Module):
         loc = torch.cat([o.view(o.size(0), -1) for o in loc], 1)
         conf = torch.cat([o.view(o.size(0), -1) for o in conf], 1)
 
-        # output = self.detect(
-        #     loc.view(loc.size(0), -1, 4),                   # loc preds
-        #     self.softmax(conf.view(conf.size(0), -1,
-        #                     self.num_classes)),                # conf preds
-        #     self.priors.type(type(x.data)).cuda()                  # default boxes
-        # )
-        output = (
-            loc.view(loc.size(0), -1, 4),
-            conf.view(conf.size(0), -1, self.num_classes),
-            self.priors,
-            s
-        )
+        if self.mode == 'test':
+            output = self.detect(
+                loc.view(loc.size(0), -1, 4),                   # loc preds
+                self.softmax(conf.view(conf.size(0), -1,
+                                self.num_classes)),                # conf preds
+                self.priors.type(type(x.data)).cuda()                  # default boxes
+            )
+        elif self.mode == 'train':
+            output = (
+                loc.view(loc.size(0), -1, 4),
+                conf.view(conf.size(0), -1, self.num_classes),
+                self.priors,
+                s
+            )
         # x = self.features(x)
         # x = x.mean(3).mean(2)
         # x = self.classifier(x)
@@ -249,5 +252,5 @@ class MobileNetV2(nn.Module):
         self.load_state_dict(torch.load(base_file,
                                         map_location=lambda storage, loc: storage))
 
-def mobilenetv2_module():
-    return MobileNetV2(loc, conf)
+def mobilenetv2_module(mode):
+    return MobileNetV2(loc, conf, mode)

@@ -23,7 +23,7 @@ parser.add_argument('--resume', default=None, type=str,
                     help='Checkpoint state_dict file to resume training from')
 parser.add_argument('--start_iter', default=0, type=int,
                     help='Resume training at this iter')
-parser.add_argument('--num_workers', default=1, type=int,
+parser.add_argument('--num_workers', default=4, type=int,
                     help='Number of workers used in dataloading')
 parser.add_argument('--lr', '--learning-rate', default=1e-3, type=float,
                     help='initial learning rate')
@@ -46,13 +46,16 @@ def adjust_learning_rate(optimizer, gamma, step):
 def train():
     cfg = voc
     l2_loss = nn.MSELoss()
-    vgg_test = vgg_module()
-    mobilenetv2_test = mobilenetv2_module()
+    vgg_test = vgg_module('train')
     vgg_test.load_weights('./models/ssd300_mAP_77.43_v2.pth')
     vgg_test.eval()
-    vgg_test = vgg_test.cuda()
+    vgg_test = nn.DataParallel(vgg_test.cuda(), device_ids=[0, 1, 2])
+    # vgg_test = vgg_test.cuda()
+
+    mobilenetv2_test = mobilenetv2_module('train')
     mobilenetv2_test.train()
-    mobilenetv2_test = mobilenetv2_test.cuda()
+    mobilenetv2_test = nn.DataParallel(mobilenetv2_test.cuda(), device_ids=[0, 3, 4])
+    # mobilenetv2_test=mobilenetv2_test.cuda()
     torch.backends.cudnn.benchmark = True
 
     dataset = VOCDetection(root=dataset_root,
@@ -82,16 +85,17 @@ def train():
     # create batch iterator
     batch_iterator = iter(data_loader)
     for iteration in range(args.start_iter, cfg['max_iter']):
-
         if iteration in cfg['lr_steps']:
             step_index += 1
-            adjust_learning_rate(optimizer, args.gamma, step_index)
+            adjust_learning_rate(optimizer, gamma, step_index)
 
         # load train data
         try:
             images, targets = next(batch_iterator)
+            print(batch_iterator, iteration)
         except StopIteration:
-            continue
+            print('Wrong at %i'%iteration)
+            exit()
         images = images.cuda()
         # forward
         t0 = time.time()

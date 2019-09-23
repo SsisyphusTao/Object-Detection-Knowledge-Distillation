@@ -6,7 +6,7 @@ import time
 from penguin import getsingleimg
 
 x, show = getsingleimg()
-mobilenetv2_test = mobilenetv2_module()
+mobilenetv2_test = mobilenetv2_module('test')
 
 # for n, block in enumerate(mobilenetv2_test.features):
 #     # if n == 8 or n ==16:

@@ -100,10 +100,11 @@ voc = {
 }
 
 class vgg_ssd(nn.Module):
-    def __init__(self, backbone, ssd, head, num_classes=21):
+    def __init__(self, backbone, ssd, head, mode, num_classes=21):
         super().__init__()
         
         self.num_classes = num_classes
+        self.mode = mode
         self.priorbox = PriorBox(voc)
         with torch.no_grad():
             self.priors = self.priorbox.forward()
@@ -150,17 +151,19 @@ class vgg_ssd(nn.Module):
         loc = torch.cat([o.view(o.size(0), -1) for o in loc], 1)
         conf = torch.cat([o.view(o.size(0), -1) for o in conf], 1)
         
-        # output = self.detect(
-        #     loc.view(loc.size(0), -1, 4),             # loc preds
-        #     self.softmax(conf.view(conf.size(0), -1,
-        #                     self.num_classes)),       # conf preds
-        #     self.priors.type(type(x.data)).cuda(),    # default boxes
-        # )
-        output = (
-            loc.view(loc.size(0), -1, 4),
-            conf.view(conf.size(0), -1, self.num_classes),
-            s
-        )
+        if self.mode == 'test':
+            output = self.detect(
+                loc.view(loc.size(0), -1, 4),             # loc preds
+                self.softmax(conf.view(conf.size(0), -1,
+                                self.num_classes)),       # conf preds
+                self.priors.type(type(x.data)).cuda(),    # default boxes
+            )
+        elif self.mode == 'train':
+            output = (
+                loc.view(loc.size(0), -1, 4),
+                conf.view(conf.size(0), -1, self.num_classes),
+                s
+            )
 
         return output
 
@@ -168,5 +171,5 @@ class vgg_ssd(nn.Module):
         self.load_state_dict(torch.load(base_file,
                                         map_location=lambda storage, loc: storage))
 
-def vgg_module():
-    return vgg_ssd(vgg_, ssd_, head_)
+def vgg_module(mode):
+    return vgg_ssd(vgg_, ssd_, head_, mode)
