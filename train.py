@@ -88,7 +88,10 @@ def train():
             adjust_learning_rate(optimizer, args.gamma, step_index)
 
         # load train data
-        images, targets = next(batch_iterator)
+        try:
+            images, targets = next(batch_iterator)
+        except StopIteration:
+            continue
         images = images.cuda()
         # forward
         t0 = time.time()
@@ -104,8 +107,8 @@ def train():
         t1 = time.time()
 
         if iteration % 10 == 0:
-            print('iter ' + repr(iteration) + 'timer: %.4f sec.' % (t1 - t0))
-            print(loss)
+            print('iter ' + repr(iteration) + ' | timer: %.4f sec.' % (t1 - t0))
+            print('Loss: ' + str(loss.cpu().detach().numpy()))
 
         if iteration != 0 and iteration % 5000 == 0:
             print('Saving state, iter:', iteration)

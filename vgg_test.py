@@ -29,5 +29,5 @@ for j in range(1, r.size(1)):
     (boxes[2], 
      boxes[3]), 255)
 print(boxes)    
-# cv.imshow('sdf', show)
-# cv.waitKey()
+cv.imshow('sdf', show)
+cv.waitKey()

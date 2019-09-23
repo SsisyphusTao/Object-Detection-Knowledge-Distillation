@@ -19,6 +19,15 @@ cfg = {
     'clip': True,
     'name': 'VOC',
 }
+
+def weighted_KL_div(ps, qt, pos_w, neg_w):
+    eps = 1e-5
+    ps = ps + eps
+    qt = qt + eps
+    log_p = qt * torch.log(ps)
+    log_p[:,0] *= neg_w
+    log_p[:,1:] *= pos_w
+    return -torch.sum(log_p)
     
 def bounded_regression_loss(Rs, Rt, gt, m, v=0.5):
     loss = F.mse_loss(Rs, gt)
@@ -114,7 +123,7 @@ class MultiBoxLoss(nn.Module):
         pos = conf_t > 0 # positive label from ground truth
         num_pos = pos.sum(dim=1, keepdim=True)
 
-        # Localization Loss (Smooth L1)
+        # Localization Loss (Smooth L1)--------------------------------------------------------------------------------------------
         # Shape: [batch,num_priors,4]
         pos_idx = pos.unsqueeze(pos.dim()).expand_as(loc_data)
         loc_p = loc_data[pos_idx].view(-1, 4) # select out the box should be positive from predictions
@@ -129,7 +138,7 @@ class MultiBoxLoss(nn.Module):
         # Compute max conf across batch for hard negative mining
         batch_conf = conf_data.view(-1, self.num_classes)
         loss_c = log_sum_exp(batch_conf) - batch_conf.gather(1, conf_t.view(-1, 1))
-
+        # Conf_loss-----------------------------------------------------------------------------------------------------------------
         # Hard Negative Mining
         # loss_c[pos] = 0  # filter out pos boxes for now
         loss_c[pos.view(-1, 1)] = 0
@@ -145,22 +154,22 @@ class MultiBoxLoss(nn.Module):
         neg_idx = neg.unsqueeze(2).expand_as(conf_data)
         conf_p = conf_data[(pos_idx+neg_idx).gt(0)].view(-1, self.num_classes)
         targets_weighted = conf_t[(pos+neg).gt(0)] # gt means greater than(>)
-
+        
         # modified original code here: add softmax before cross_entropy
-        conf_p = F.softmax(conf_p, dim=1)
+        conf_p = F.softmax(conf_p/self.T, dim=1)
         loss_c = F.cross_entropy(conf_p, targets_weighted, reduction='sum')
-
+        print(conf_p.size())
         #soft loss from teacher
         confT_p = confT[(pos_idx+neg_idx).gt(0)].view(-1, self.num_classes)
-        t_dist = F.softmax(confT_p/self.T, dim=1)
-        loss_soft = F.kl_div(conf_p, t_dist, reduction='batchmean') * (self.T**2)
+        confT_p = F.softmax(confT_p/self.T, dim=1)
+        loss_soft = weighted_KL_div(conf_p, confT_p, self.pos_w, self.neg_w)
 
         # Sum of losses: L(x,c,l,g) = (Lconf(x, c) + αLloc(x,l,g)) / N
-
-        N = num_pos.data.sum()
+        
+        # N = num_pos.data.sum()
         # loss_l /= N
         # loss_c /= N
         loss_cls = self.u * loss_c + (1 - self.u) * loss_soft
-        loss_ssd = (loss_cls + self.lmda * loss_reg) / N
+        loss_ssd = (loss_cls + self.lmda * loss_reg) / num
 
         return loss_ssd

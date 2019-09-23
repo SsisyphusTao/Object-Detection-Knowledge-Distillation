@@ -116,8 +116,8 @@ class vgg_ssd(nn.Module):
         self.loc = nn.ModuleList(head[0])
         self.conf = nn.ModuleList(head[1])
         
-        # self.softmax = nn.Softmax(dim=-1)
-        # self.detect = Detect(num_classes, 0, 200, 0.01, 0.45)
+        self.softmax = nn.Softmax(dim=-1)
+        self.detect = Detect(num_classes, 0, 200, 0.01, 0.45)
 
     def forward(self, x):
         sources = list()

@@ -183,8 +183,8 @@ class MobileNetV2(nn.Module):
         #     nn.Dropout(0.2),
         #     nn.Linear(self.last_channel, n_class),
         # )
-        # self.detect = Detect(n_class, 0, 200, 0.01, 0.45)
-        # self.softmax = nn.Softmax(dim=-1)
+        self.detect = Detect(n_class, 0, 200, 0.01, 0.45)
+        self.softmax = nn.Softmax(dim=-1)
         self._initialize_weights()
 
     def forward(self, x):
@@ -245,6 +245,9 @@ class MobileNetV2(nn.Module):
             #     n = m.weight.size(1)
             #     m.weight.data.normal_(0, 0.01)
             #     m.bias.data.zero_()
+    def load_weights(self, base_file):
+        self.load_state_dict(torch.load(base_file,
+                                        map_location=lambda storage, loc: storage))
 
 def mobilenetv2_module():
     return MobileNetV2(loc, conf)

@@ -13,7 +13,7 @@ mobilenetv2_test = mobilenetv2_module()
 #         print(n)
 #         print(block)
 #         print('---------------------------------')
-
+mobilenetv2_test.load_weights('./models/student_mbv2_final.pth')
 mobilenetv2_test.eval()
 mobilenetv2_test = mobilenetv2_test.cuda()
 torch.backends.cudnn.benchmark = True
@@ -32,5 +32,5 @@ for j in range(1, r.size(1)):
     cv.rectangle(show, (boxes[0],boxes[1]), 
     (boxes[2], 
      boxes[3]), 255)    
-# cv.imshow('sdf', show)
-# cv.waitKey()
+cv.imshow('sdf', show)
+cv.waitKey()
