@@ -20,8 +20,8 @@ r = vgg_test(x).data#.numpy()[0]
 print(time.time()-a)
 for j in range(1, r.size(1)):
     dets = r[0, j, :]
-    mask = dets[:, 0].gt(0.).expand(5, dets.size(0)).t()
-    dets = torch.masked_select(dets, mask).view(-1, 5)
+    mask = dets[:, 0].gt(0.).expand(5, dets.size(0)).t() # expand -> copy value; t -> Transpose; all these two is making score to the same dim of location
+    dets = torch.masked_select(dets, mask).view(-1, 5)  # select out valid boxes and separate them
     if dets.size(0) == 0:
         continue
     boxes = dets[:, 1:].numpy()[0]

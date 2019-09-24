@@ -51,7 +51,7 @@ class Detect(Function):
 
         # Decode predictions into bboxes.
         for i in range(num):
-            decoded_boxes = decode(loc_data[i], prior_data, self.variance)
+            decoded_boxes = decode(loc_data[i], prior_data, self.variance) # here change the offset to percentage of the scale
             # For each class, perform nms
             conf_scores = conf_preds[i].clone()
 
