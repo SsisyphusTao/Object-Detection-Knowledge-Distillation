@@ -15,7 +15,7 @@ mobilenetv2_test = mobilenetv2_module('test')
 #         print('---------------------------------')
 # mobilenetv2_test.load_weights('./models/student_mbv2_2000.pth')
 mobilenetv2_test.load_state_dict({k.replace('module.',''):v 
-for k,v in torch.load('./models/student_vgg_5000.pth').items()})
+for k,v in torch.load('./models/student_mbv2_2500.pth').items()})
 mobilenetv2_test.eval()
 mobilenetv2_test = mobilenetv2_test.cuda()
 torch.backends.cudnn.benchmark = True
@@ -29,6 +29,7 @@ for j in range(1, r.size(1)):
     if dets.size(0) == 0:
         continue
     boxes = dets[:, 1:].numpy()[0]
+    print(dets[:,0].numpy()[0])
     # if dets[:, 0].numpy()[0] < 0.5:
     #     continue
     boxes *= 300
