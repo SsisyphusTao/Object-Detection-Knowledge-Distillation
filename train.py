@@ -52,14 +52,10 @@ def train():
     vgg_test = nn.DataParallel(vgg_test.cuda(), device_ids=[0, 1, 2])
     # vgg_test = vgg_test.cuda()
 
-    # mobilenetv2_test = mobilenetv2_module('train')
-    # mobilenetv2_test.train()
-    # mobilenetv2_test = nn.DataParallel(mobilenetv2_test.cuda(), device_ids=[0, 3, 4])
+    mobilenetv2_test = mobilenetv2_module('train')
+    mobilenetv2_test.train()
+    mobilenetv2_test = nn.DataParallel(mobilenetv2_test.cuda(), device_ids=[0, 3, 4])
     # mobilenetv2_test=mobilenetv2_test.cuda()
-    
-    vgg_student = vgg_module('train')
-    vgg_student.train()
-    vgg_student = nn.DataParallel(vgg_student.cuda(), device_ids=[0, 3, 4])
     torch.backends.cudnn.benchmark = True
 
     dataset = VOCDetection(root=dataset_root,
@@ -67,7 +63,7 @@ def train():
                            transform=SSDAugmentation(cfg['min_dim'],
                                                      MEANS))
 
-    optimizer = optim.SGD(vgg_student.parameters(), lr=args.lr, momentum=0.9,
+    optimizer = optim.SGD(mobilenetv2_test.parameters(), lr=args.lr, momentum=0.9,
                           weight_decay=5e-4)
     criterion = MultiBoxLoss(cfg['num_classes'], 0.5, True, 0, True, 3, 0.5,
                              False)
@@ -102,13 +98,13 @@ def train():
         images = images.cuda()
         # forward
         t0 = time.time()
-        mbv2_predictions = vgg_student(images)
+        mbv2_predictions = mobilenetv2_test(images)
         vgg_predictions = vgg_test(images)
         # backprop
         optimizer.zero_grad()
         loss_hint = l2_loss(mbv2_predictions[-1], vgg_predictions[-1])
         loss_ssd = criterion(mbv2_predictions[:3], vgg_predictions[:2], targets)
-        loss = loss_hint + loss_ssd * 0.5
+        loss = loss_ssd + loss_hint * 0.5
         loss.backward()
         optimizer.step()
         t1 = time.time()
@@ -117,12 +113,12 @@ def train():
             print('iter ' + repr(iteration) + ' | timer: %.4f sec.' % (t1 - t0))
             print('Loss: ' + str(loss.cpu().detach().numpy()))
 
-        if iteration != 0 and iteration % 5000 == 0:
+        if iteration != 0 and iteration % 2500 == 0:
             print('Saving state, iter:', iteration)
-            torch.save(vgg_student.state_dict(), 'models/student_vgg_' +
+            torch.save(mobilenetv2_test.state_dict(), 'models/student_mbv2_' +
                        repr(iteration) + '.pth')
-    torch.save(vgg_student.state_dict(),
-               save_folder + 'student_vgg_final.pth')
+    torch.save(mobilenetv2_test.state_dict(),
+               save_folder + 'student_mbv2_final.pth')
 
 if __name__ == '__main__':
     train()

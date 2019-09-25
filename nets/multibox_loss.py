@@ -21,7 +21,7 @@ cfg = {
 }
 
 def weighted_KL_div(ps, qt, pos_w, neg_w):
-    eps = 1e-5
+    eps = 1e-10
     ps = ps + eps
     qt = qt + eps
     log_p = qt * torch.log(ps)
@@ -62,7 +62,7 @@ class MultiBoxLoss(nn.Module):
 
     def __init__(self, num_classes, overlap_thresh, prior_for_matching,
                  bkg_label, neg_mining, neg_pos, neg_overlap, encode_target,
-                 use_gpu=True, neg_w=1.5, pos_w=1.0, Temperature=1., reg_m=0., u=0.5, lmda=1.):
+                 use_gpu=True, neg_w=1.5, pos_w=1.0, Temperature=1., reg_m=0., u=0.8, lmda=1.):
         super(MultiBoxLoss, self).__init__()
         self.use_gpu = use_gpu
         self.num_classes = num_classes
@@ -166,10 +166,10 @@ class MultiBoxLoss(nn.Module):
 
         # Sum of losses: L(x,c,l,g) = (Lconf(x, c) + αLloc(x,l,g)) / N
         
-        # N = num_pos.data.sum()
+        N = num_pos.data.sum()
         # loss_l /= N
         # loss_c /= N
         loss_cls = self.u * loss_c + (1 - self.u) * loss_soft
-        loss_ssd = (loss_cls + self.lmda * loss_reg) / num
+        loss_ssd = (loss_cls + self.lmda * loss_reg) / N * num
 
         return loss_ssd
