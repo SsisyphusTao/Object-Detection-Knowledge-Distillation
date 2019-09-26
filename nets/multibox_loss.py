@@ -170,6 +170,6 @@ class MultiBoxLoss(nn.Module):
         # loss_l /= N
         # loss_c /= N
         loss_cls = self.u * loss_c + (1 - self.u) * loss_soft
-        loss_ssd = (loss_cls + self.lmda * loss_reg) / N * num
+        loss_ssd = (loss_cls + self.lmda * loss_reg) / N
 
         return loss_ssd
