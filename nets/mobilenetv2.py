@@ -84,7 +84,7 @@ loc = [
     nn.Conv2d(512, mbox[2] * 4, kernel_size=3, padding=1),
     nn.Conv2d(256, mbox[3] * 4, kernel_size=3, padding=1),
     nn.Conv2d(256, mbox[4] * 4, kernel_size=3, padding=1),
-    nn.Conv2d(128, mbox[5] * 4, kernel_size=3, padding=1),
+    nn.Conv2d(256, mbox[5] * 4, kernel_size=3, padding=1),
 ]
 conf = [
     nn.Conv2d(512, mbox[0] * 21, kernel_size=3, padding=1),
@@ -92,7 +92,7 @@ conf = [
     nn.Conv2d(512, mbox[2] * 21, kernel_size=3, padding=1),
     nn.Conv2d(256, mbox[3] * 21, kernel_size=3, padding=1),
     nn.Conv2d(256, mbox[4] * 21, kernel_size=3, padding=1),
-    nn.Conv2d(128, mbox[5] * 21, kernel_size=3, padding=1),
+    nn.Conv2d(256, mbox[5] * 21, kernel_size=3, padding=1),
 ]
 
 class MobileNetV2(nn.Module):
@@ -171,7 +171,7 @@ class MobileNetV2(nn.Module):
         #5->3
         ssd_block(256,128,256,2),
         #3->1
-        ssd_block(256,64,128,1)]
+        ssd_block(256,128,256,1)]
         )
 
         self.priorbox = PriorBox(voc)
