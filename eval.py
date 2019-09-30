@@ -35,7 +35,7 @@ def str2bool(v):
 parser = argparse.ArgumentParser(
     description='Single Shot MultiBox Detector Evaluation')
 parser.add_argument('--trained_model',
-                    default='models/student_mbv2_2500.pth', type=str,
+                    default='models/student_mbv2_final.pth', type=str,
                     help='Trained state_dict file path to open')
 parser.add_argument('--save_folder', default='eval/', type=str,
                     help='File path to save results')
@@ -435,5 +435,5 @@ if __name__ == '__main__':
         cudnn.benchmark = True
     # evaluation
     test_net(args.save_folder, net, args.cuda, dataset,
-             BaseTransform(net.size, dataset_mean), args.top_k, 300,
+             BaseTransform(300, dataset_mean), args.top_k, 300,
              thresh=args.confidence_threshold)
