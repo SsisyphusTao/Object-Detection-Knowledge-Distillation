@@ -25,7 +25,7 @@ parser.add_argument('--start_iter', default=0, type=int,
                     help='Resume training at this iter')
 parser.add_argument('--num_workers', default=16, type=int,
                     help='Number of workers used in dataloading')
-parser.add_argument('--lr', '--learning-rate', default=0.001, type=float,
+parser.add_argument('--lr', '--learning-rate', default=5e-3, type=float,
                     help='initial learning rate')
 args = parser.parse_args()
 
@@ -113,7 +113,7 @@ def train():
             print('iter ' + repr(iteration) + ' | timer: %.4f sec.' % (t1 - t0))
             print('Loss: ' + str(loss.cpu().detach().numpy()))
 
-        if iteration != 0 and iteration % 2500 == 0:
+        if iteration != 0 and iteration % 2560 == 0:
             print('Saving state, iter:', iteration)
             torch.save(mobilenetv2_test.state_dict(), 'models/student_mbv2_' +
                        repr(iteration) + '.pth')

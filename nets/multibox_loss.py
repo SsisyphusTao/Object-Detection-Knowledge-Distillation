@@ -156,12 +156,12 @@ class MultiBoxLoss(nn.Module):
         targets_weighted = conf_t[(pos+neg).gt(0)] # gt means greater than(>)
         
         # modified original code here: add softmax before cross_entropy
-        conf_p = F.softmax(conf_p/self.T, dim=1)
+        conf_p = F.softmax(conf_p/self.T, -1, 21)
         loss_c = F.cross_entropy(conf_p, targets_weighted, reduction='sum')
 
         #soft loss from teacher
         confT_p = confT[(pos_idx+neg_idx).gt(0)].view(-1, self.num_classes)
-        confT_p = F.softmax(confT_p/self.T, dim=1)
+        confT_p = F.softmax(confT_p/self.T, -1, 21)
         loss_soft = weighted_KL_div(conf_p, confT_p, self.pos_w, self.neg_w)
 
         # Sum of losses: L(x,c,l,g) = (Lconf(x, c) + αLloc(x,l,g)) / N
