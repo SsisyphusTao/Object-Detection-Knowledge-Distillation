@@ -12,7 +12,7 @@ from torch.autograd import Variable
 from data import VOC_ROOT, VOCAnnotationTransform, VOCDetection, BaseTransform
 from data import VOC_CLASSES as labelmap
 import torch.utils.data as data
-from nets import vgg_module, mobilenetv2_module
+from nets import vgg_module, mobilenetv2_module, vgg_student_module
 
 import sys
 import os
@@ -420,7 +420,7 @@ def evaluate_detections(box_list, output_dir, dataset):
 if __name__ == '__main__':
     # load net
     num_classes = len(labelmap) + 1                      # +1 for background
-    net = mobilenetv2_module('test')         # initialize SSD
+    net = vgg_student_module('test')         # initialize SSD
     # net.load_state_dict(torch.load(args.trained_model))
     net.load_state_dict({k.replace('module.',''):v 
                         for k,v in torch.load(args.trained_model).items()})
