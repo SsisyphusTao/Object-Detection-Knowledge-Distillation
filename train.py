@@ -3,7 +3,7 @@ import torch
 from torch import nn
 import torch.optim as optim
 import torch.utils.data as data
-from nets import vgg_module, mobilenetv2_module
+from nets import vgg_module, mobilenetv2_module, vgg_student_module
 from penguin import getsingleimg
 from nets.multibox_loss import MultiBoxLoss
 from utils.augmentations import SSDAugmentation
@@ -21,11 +21,11 @@ parser.add_argument('--batch_size', default=64, type=int,
                     help='Batch size for training')
 parser.add_argument('--resume', default=None, type=str,
                     help='Checkpoint state_dict file to resume training from')
-parser.add_argument('--start_iter', default=0, type=int,
+parser.add_argument('--start_iter', default=12810, type=int,
                     help='Resume training at this iter')
-parser.add_argument('--num_workers', default=16, type=int,
+parser.add_argument('--num_workers', default=4, type=int,
                     help='Number of workers used in dataloading')
-parser.add_argument('--lr', '--learning-rate', default=5e-3, type=float,
+parser.add_argument('--lr', '--learning-rate', default=1e-5, type=float,
                     help='initial learning rate')
 args = parser.parse_args()
 
@@ -52,7 +52,9 @@ def train():
     vgg_test = nn.DataParallel(vgg_test.cuda(), device_ids=[0, 1, 2])
     # vgg_test = vgg_test.cuda()
 
-    mobilenetv2_test = mobilenetv2_module('train')
+    mobilenetv2_test = vgg_student_module('train')
+    mobilenetv2_test.load_state_dict({k.replace('module.',''):v 
+    for k,v in torch.load('./models/student_mbv2_12800.pth').items()})
     mobilenetv2_test.train()
     mobilenetv2_test = nn.DataParallel(mobilenetv2_test.cuda(), device_ids=[0, 3, 4])
     # mobilenetv2_test=mobilenetv2_test.cuda()

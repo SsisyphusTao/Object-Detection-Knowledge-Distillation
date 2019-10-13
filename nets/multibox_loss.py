@@ -62,7 +62,7 @@ class MultiBoxLoss(nn.Module):
 
     def __init__(self, num_classes, overlap_thresh, prior_for_matching,
                  bkg_label, neg_mining, neg_pos, neg_overlap, encode_target,
-                 use_gpu=True, neg_w=1.5, pos_w=1.0, Temperature=1., reg_m=0., u=0.8, lmda=1.):
+                 use_gpu=True, neg_w=1.5, pos_w=1.0, Temperature=1., reg_m=0., u=0.5, lmda=1.):
         super(MultiBoxLoss, self).__init__()
         self.use_gpu = use_gpu
         self.num_classes = num_classes
