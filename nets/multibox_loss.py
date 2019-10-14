@@ -62,7 +62,7 @@ class MultiBoxLoss(nn.Module):
 
     def __init__(self, num_classes, overlap_thresh, prior_for_matching,
                  bkg_label, neg_mining, neg_pos, neg_overlap, encode_target,
-                 use_gpu=True, neg_w=1.5, pos_w=1.0, Temperature=1., reg_m=0., u=0.5, lmda=1.):
+                 use_gpu=True, neg_w=1.5, pos_w=1.0, Temperature=1., reg_m=0., lmda=1.):
         super(MultiBoxLoss, self).__init__()
         self.use_gpu = use_gpu
         self.num_classes = num_classes
@@ -79,10 +79,10 @@ class MultiBoxLoss(nn.Module):
         self.pos_w = pos_w
         self.reg_m = reg_m
         self.T = Temperature
-        self.u = u
+        # self.u = u
         self.lmda = lmda
 
-    def forward(self, predictions, predT, targets):
+    def forward(self, predictions, predT, targets, u=1.):
         """Multibox Loss
         Args:
             predictions (tuple): A tuple containing loc preds, conf preds,
@@ -100,7 +100,7 @@ class MultiBoxLoss(nn.Module):
         priors = priors[:loc_data.size(1), :] # priorboxes' location
         num_priors = (priors.size(0))
         num_classes = self.num_classes
-
+        self.u = u
         #predicions of teachers
         locT, confT = predT
 

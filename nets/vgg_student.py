@@ -22,8 +22,8 @@ def vgg16(cfg, i, batch_norm=False):
                 layers += [conv2d, nn.ReLU(inplace=True)]
             in_channels = v
     pool5 = nn.MaxPool2d(kernel_size=3, stride=1, padding=1)
-    conv6 = nn.Conv2d(256, 512, kernel_size=3, padding=6, dilation=6)
-    conv7 = nn.Conv2d(512, 512, kernel_size=1)
+    conv6 = nn.Conv2d(128, 256, kernel_size=3, padding=6, dilation=6)
+    conv7 = nn.Conv2d(256, 256, kernel_size=1)
     layers += [pool5, conv6,
                nn.ReLU(inplace=True), conv7, nn.ReLU(inplace=True)]
     return layers
@@ -63,13 +63,13 @@ def multibox(vgg, extra_layers, cfg, num_classes=21):
     return vgg, extra_layers, (loc_layers, conf_layers)
 
 
-vgg = [32, 32, 'M', 64, 64, 'M', 128, 128, 128, 'C', 256, 256, 256, 'M',
-            256, 256, 256]
-ssd = [128, 'S', 128, 64, 'S', 128, 64, 128, 64, 128]
+vgg = [16, 16, 'M', 32, 32, 'M', 64, 64, 64, 'C', 128, 128, 128, 'M',
+            128, 128, 128]
+ssd = [64, 'S', 64, 32, 'S', 64, 32, 64, 32, 64]
 mbox = [4, 6, 6, 6, 4, 4]
 
 vgg_, ssd_, head_ = multibox(vgg16(vgg, 3),
-                                     add_extras(ssd, 512),
+                                     add_extras(ssd, 256),
                                      mbox)
 
 # for i in vgg_:
@@ -111,7 +111,7 @@ class vgg_ssd(nn.Module):
         
         self.vgg = nn.ModuleList(backbone)
         # Layer learns to scale the l2 normalized features from conv4_3
-        self.L2Norm = L2Norm(256, 20)
+        self.L2Norm = L2Norm(128, 20)
         self.extras = nn.ModuleList(ssd)
 
         self.loc = nn.ModuleList(head[0])
@@ -120,7 +120,7 @@ class vgg_ssd(nn.Module):
         self.softmax = nn.Softmax(dim=-1)
         self.detect = Detect()
 
-        self.adaptation = nn.Conv2d(256, 512, 1, 1, 0)
+        self.adaptation = nn.Conv2d(128, 512, 1, 1, 0)
 
     def forward(self, x):
         sources = list()
