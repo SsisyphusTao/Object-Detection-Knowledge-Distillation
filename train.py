@@ -3,7 +3,7 @@ import torch
 from torch import nn
 import torch.optim as optim
 import torch.utils.data as data
-from nets import vgg_module, mobilenetv2_module, vgg_student_module
+from nets import vgg_module, mobilenetv2_module
 from penguin import getsingleimg
 from nets.multibox_loss import MultiBoxLoss
 from utils.augmentations import SSDAugmentation
@@ -52,7 +52,7 @@ def train():
     vgg_test = nn.DataParallel(vgg_test.cuda(), device_ids=[0, 1, 2, 3])
     # vgg_test = vgg_test.cuda()
 
-    mobilenetv2_test = vgg_student_module('train')
+    mobilenetv2_test = mobilenetv2_module('train')
     if args.resume:
         mobilenetv2_test.load_state_dict({k.replace('module.',''):v 
         for k,v in torch.load(args.resume).items()})

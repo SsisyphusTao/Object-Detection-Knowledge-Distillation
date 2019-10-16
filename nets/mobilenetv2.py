@@ -8,15 +8,15 @@ from .vgg import voc
 
 def conv_bn(inp, oup, stride):
     return nn.Sequential(
-        nn.Conv2d(inp, oup, 3, stride, 1, bias=False),
-        # nn.BatchNorm2d(oup),
+        nn.Conv2d(inp, oup, 3, stride, 1),
+        nn.BatchNorm2d(oup),
         nn.ReLU6(inplace=True)
     )
 
 def conv_1x1_bn(inp, oup):
     return nn.Sequential(
-        nn.Conv2d(inp, oup, 1, 1, 0, bias=False),
-        # nn.BatchNorm2d(oup),
+        nn.Conv2d(inp, oup, 1, 1, 0),
+        nn.BatchNorm2d(oup),
         nn.ReLU6(inplace=True)
     )
 
@@ -33,26 +33,26 @@ class InvertedResidual(nn.Module):
         if expand_ratio == 1:
             self.conv = nn.Sequential(
                 # dw
-                nn.Conv2d(hidden_dim, hidden_dim, 3, stride, 1, groups=hidden_dim, bias=False),
-                # nn.BatchNorm2d(hidden_dim),
+                nn.Conv2d(hidden_dim, hidden_dim, 3, stride, 1, groups=hidden_dim),
+                nn.BatchNorm2d(hidden_dim),
                 nn.ReLU6(inplace=True),
                 # pw-linear
-                nn.Conv2d(hidden_dim, oup, 1, 1, 0, bias=False),
-                # nn.BatchNorm2d(oup),
+                nn.Conv2d(hidden_dim, oup, 1, 1, 0),
+                nn.BatchNorm2d(oup),
             )
         else:
             self.conv = nn.Sequential(
                 # pw
-                nn.Conv2d(inp, hidden_dim, 1, 1, 0, bias=False),
-                # nn.BatchNorm2d(hidden_dim),
+                nn.Conv2d(inp, hidden_dim, 1, 1, 0),
+                nn.BatchNorm2d(hidden_dim),
                 nn.ReLU6(inplace=True),
                 # dw
-                nn.Conv2d(hidden_dim, hidden_dim, 3, stride, 1, groups=hidden_dim, bias=False),
-                # nn.BatchNorm2d(hidden_dim),
+                nn.Conv2d(hidden_dim, hidden_dim, 3, stride, 1, groups=hidden_dim),
+                nn.BatchNorm2d(hidden_dim),
                 nn.ReLU6(inplace=True),
                 # pw-linear
-                nn.Conv2d(hidden_dim, oup, 1, 1, 0, bias=False),
-                # nn.BatchNorm2d(oup),
+                nn.Conv2d(hidden_dim, oup, 1, 1, 0),
+                nn.BatchNorm2d(oup),
             )
 
     def forward(self, x):
@@ -65,13 +65,16 @@ class ssd_block(nn.Module):
     def __init__(self, i, m, o, s):
         super().__init__()
         self.block = nn.Sequential(
-        nn.Conv2d(i, m, 1, 1, 0, bias=False),
+        nn.Conv2d(i, m, 1, 1, 0),
+        nn.BatchNorm2d(m),
         nn.ReLU6(inplace=True),
 
-        nn.Conv2d(m, m, 3, s, s-1, groups=m, bias=False),
+        nn.Conv2d(m, m, 3, s, s-1, groups=m),
+        nn.BatchNorm2d(m),
         nn.ReLU6(inplace=True),
 
-        nn.Conv2d(m, o, 1, 1, 0, bias=False),
+        nn.Conv2d(m, o, 1, 1, 0),
+        nn.BatchNorm2d(o),
         nn.ReLU6(inplace=True)
         )
     def forward(self, x):
@@ -79,20 +82,20 @@ class ssd_block(nn.Module):
 
 mbox = [4, 6, 6, 6, 4, 4]
 loc = [
-    nn.Conv2d(512, mbox[0] * 4, kernel_size=3, padding=1),
-    nn.Conv2d(1024, mbox[1] * 4, kernel_size=3, padding=1),
+    nn.Conv2d(32, mbox[0] * 4, kernel_size=3, padding=1),
+    nn.Conv2d(384, mbox[1] * 4, kernel_size=3, padding=1),
     nn.Conv2d(512, mbox[2] * 4, kernel_size=3, padding=1),
     nn.Conv2d(256, mbox[3] * 4, kernel_size=3, padding=1),
     nn.Conv2d(256, mbox[4] * 4, kernel_size=3, padding=1),
-    nn.Conv2d(256, mbox[5] * 4, kernel_size=3, padding=1),
+    nn.Conv2d(128, mbox[5] * 4, kernel_size=3, padding=1),
 ]
 conf = [
-    nn.Conv2d(512, mbox[0] * 21, kernel_size=3, padding=1),
-    nn.Conv2d(1024, mbox[1] * 21, kernel_size=3, padding=1),
+    nn.Conv2d(32, mbox[0] * 21, kernel_size=3, padding=1),
+    nn.Conv2d(384, mbox[1] * 21, kernel_size=3, padding=1),
     nn.Conv2d(512, mbox[2] * 21, kernel_size=3, padding=1),
     nn.Conv2d(256, mbox[3] * 21, kernel_size=3, padding=1),
     nn.Conv2d(256, mbox[4] * 21, kernel_size=3, padding=1),
-    nn.Conv2d(256, mbox[5] * 21, kernel_size=3, padding=1),
+    nn.Conv2d(128, mbox[5] * 21, kernel_size=3, padding=1),
 ]
 
 class MobileNetV2(nn.Module):
@@ -102,7 +105,7 @@ class MobileNetV2(nn.Module):
         self.mode =mode
         block = InvertedResidual
         input_channel = 32
-        last_channel = 1024
+        last_channel = 384
         interverted_residual_setting = [
             # t, c, n, s
             [1, 16, 1, 1],
@@ -145,13 +148,14 @@ class MobileNetV2(nn.Module):
         for t, c, n, s in interverted_residual_setting:
             output_channel = int(c * width_mult)
             for i in range(n):
-                if i == 0 and c == 64:
-                    self.features.append(nn.Conv2d(32, 512, 1, 1, 0, bias=False)) #7
-                    self.features.append(nn.ReLU6(inplace=True)) #8
-                    self.features.append(nn.Conv2d(512, 512, 3, 2, 1, groups=512, bias=False)) #9
-                    self.features.append(nn.ReLU6(inplace=True)) #10
-                    self.features.append(nn.Conv2d(512, 64, 1, 1, 0, bias=False)) #11
-                elif i == 0:
+                # if i == 0 and c == 64:
+                #     self.features.append(nn.Conv2d(32, 512, 1, 1, 0)) #7
+                #     self.features.append(nn.ReLU6(inplace=True)) #8
+                #     self.features.append(nn.Conv2d(512, 512, 3, 2, 1, groups=512)) #9
+                #     self.features.append(nn.ReLU6(inplace=True)) #10
+                #     self.features.append(nn.Conv2d(512, 64, 1, 1, 0)) #11
+                # elif i == 0:
+                if i == 0:
                     self.features.append(block(input_channel, output_channel, s, expand_ratio=t))
                 else:
                     self.features.append(block(input_channel, output_channel, 1, expand_ratio=t))
@@ -165,13 +169,13 @@ class MobileNetV2(nn.Module):
 
         self.ssd=nn.ModuleList(
         #19->10
-        [ssd_block(1024,256,512,2),
+        [ssd_block(384,256,512,2),
         #10->5
         ssd_block(512,128,256,2),
         #5->3
-        ssd_block(256,128,256,2),
+        ssd_block(256,128,256,1),
         #3->1
-        ssd_block(256,128,256,1)]
+        ssd_block(256,64,128,1)]
         )
 
         self.priorbox = PriorBox(voc)
@@ -186,6 +190,7 @@ class MobileNetV2(nn.Module):
         # )
         self.detect = Detect()
         self.softmax = nn.Softmax(dim=-1)
+        self.adaptation = nn.Conv2d(32, 512, 1, 1, 0)
         self._initialize_weights()
 
     def forward(self, x):
@@ -193,14 +198,14 @@ class MobileNetV2(nn.Module):
         loc = []
         conf = []
 
-        for i in range(9):
+        for i in range(7):
             x = self.features[i](x)
 
         #adaption layer
         s = self.L2Norm(x)
         sources.append(s)
       
-        for i in range(9, len(self.features)):
+        for i in range(7, len(self.features)):
             x = self.features[i](x)
         sources.append(x)
         
@@ -227,7 +232,7 @@ class MobileNetV2(nn.Module):
                 loc.view(loc.size(0), -1, 4),
                 conf.view(conf.size(0), -1, self.num_classes),
                 self.priors,
-                s
+                self.adaptation(s)
             )
         # x = self.features(x)
         # x = x.mean(3).mean(2)
