@@ -25,7 +25,7 @@ parser.add_argument('--start_iter', default=0, type=int,
                     help='Resume training at this iter')
 parser.add_argument('--num_workers', default=4, type=int,
                     help='Number of workers used in dataloading')
-parser.add_argument('--lr', '--learning-rate', default=1e-3, type=float,
+parser.add_argument('--lr', '--learning-rate', default=5e-3, type=float,
                     help='initial learning rate')
 args = parser.parse_args()
 
@@ -49,7 +49,7 @@ def train():
     vgg_test = vgg_module('train')
     vgg_test.load_weights('./models/ssd300_mAP_77.43_v2.pth')
     vgg_test.eval()
-    vgg_test = nn.DataParallel(vgg_test.cuda(), device_ids=[0, 1, 2])
+    vgg_test = nn.DataParallel(vgg_test.cuda(), device_ids=[0, 1, 2, 3])
     # vgg_test = vgg_test.cuda()
 
     mobilenetv2_test = vgg_student_module('train')
@@ -57,7 +57,7 @@ def train():
         mobilenetv2_test.load_state_dict({k.replace('module.',''):v 
         for k,v in torch.load(args.resume).items()})
     mobilenetv2_test.train()
-    mobilenetv2_test = nn.DataParallel(mobilenetv2_test.cuda(), device_ids=[0, 3, 4])
+    mobilenetv2_test = nn.DataParallel(mobilenetv2_test.cuda(), device_ids=[0, 4])
     # mobilenetv2_test=mobilenetv2_test.cuda()
     torch.backends.cudnn.benchmark = True
 
