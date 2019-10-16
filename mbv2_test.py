@@ -1,12 +1,12 @@
 import torch
-from nets import mobilenetv2_module
+from nets import mobilenetv2_module, vgg_student_module
 import cv2 as cv
 import numpy as np
 import time
 from penguin import getsingleimg
 
 x, show = getsingleimg()
-mobilenetv2_test = mobilenetv2_module('test')
+mobilenetv2_test = vgg_student_module('test')
 
 # for n, block in enumerate(mobilenetv2_test.features):
 #     # if n == 8 or n ==16:
@@ -15,7 +15,7 @@ mobilenetv2_test = mobilenetv2_module('test')
 #         print('---------------------------------')
 # mobilenetv2_test.load_weights('./models/student_mbv2_2000.pth')
 mobilenetv2_test.load_state_dict({k.replace('module.',''):v 
-for k,v in torch.load('./models/student_mbv2_2500.pth').items()})
+for k,v in torch.load('./models/student_mbv2_final.pth').items()})
 mobilenetv2_test.eval()
 mobilenetv2_test = mobilenetv2_test.cuda()
 torch.backends.cudnn.benchmark = True
@@ -30,10 +30,11 @@ for j in range(1, r.size(1)):
         continue
     boxes = dets[:, 1:].numpy()[0]
     print(dets[:,0].numpy()[0])
-    # if dets[:, 0].numpy()[0] < 0.5:
+    # if dets[:, 0].numpy()[0] < 0.9:
     #     continue
     boxes *= 300
     boxes = boxes.astype(int)
+    # _, show = getsingleimg()
     try:
         cv.rectangle(show, (boxes[0],boxes[1]), 
         (boxes[2], 
