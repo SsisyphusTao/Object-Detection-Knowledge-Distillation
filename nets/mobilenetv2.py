@@ -181,7 +181,7 @@ class MobileNetV2(nn.Module):
         self.priorbox = PriorBox(voc)
         with torch.no_grad():
             self.priors = self.priorbox.forward()
-        self.L2Norm = L2Norm(512, 20)
+        self.L2Norm = L2Norm(32, 20)
 
         # # building classifier
         # self.classifier = nn.Sequential(

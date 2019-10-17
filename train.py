@@ -19,11 +19,11 @@ parser = argparse.ArgumentParser(
 train_set = parser.add_mutually_exclusive_group()
 parser.add_argument('--batch_size', default=64, type=int,
                     help='Batch size for training')
-parser.add_argument('--resume', default=None, type=str,
+parser.add_argument('--resume', default='./models/student_mbv2_102400.pth', type=str,
                     help='Checkpoint state_dict file to resume training from')
 parser.add_argument('--start_iter', default=0, type=int,
                     help='Resume training at this iter')
-parser.add_argument('--num_workers', default=4, type=int,
+parser.add_argument('--num_workers', default=16, type=int,
                     help='Number of workers used in dataloading')
 parser.add_argument('--lr', '--learning-rate', default=5e-3, type=float,
                     help='initial learning rate')
@@ -106,7 +106,7 @@ def train():
         # backprop
         optimizer.zero_grad()
         loss_hint = l2_loss(mbv2_predictions[-1], vgg_predictions[-1])
-        loss_ssd = criterion(mbv2_predictions[:3], vgg_predictions[:2], targets, 1.-iteration/100000)
+        loss_ssd = criterion(mbv2_predictions[:3], vgg_predictions[:2], targets, 0.1)#max(1.-iteration/100000, 0.))
         loss = loss_ssd + loss_hint * 0.5
         loss.backward()
         optimizer.step()

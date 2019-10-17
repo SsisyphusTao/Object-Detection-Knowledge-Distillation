@@ -12,7 +12,7 @@ from torch.autograd import Variable
 from data import VOC_ROOT, VOCAnnotationTransform, VOCDetection, BaseTransform
 from data import VOC_CLASSES as labelmap
 import torch.utils.data as data
-from nets import vgg_module, mobilenetv2_module, vgg_student_module
+from nets import vgg_module, mobilenetv2_module
 
 import sys
 import os
@@ -35,7 +35,7 @@ def str2bool(v):
 parser = argparse.ArgumentParser(
     description='Single Shot MultiBox Detector Evaluation')
 parser.add_argument('--trained_model',
-                    default='models/student_mbv2_final.pth', type=str,
+                    default='models/student_mbv2_2560.pth', type=str,
                     help='Trained state_dict file path to open')
 parser.add_argument('--save_folder', default='eval/', type=str,
                     help='File path to save results')
@@ -420,7 +420,7 @@ def evaluate_detections(box_list, output_dir, dataset):
 if __name__ == '__main__':
     # load net
     num_classes = len(labelmap) + 1                      # +1 for background
-    net = vgg_student_module('test')         # initialize SSD
+    net = mobilenetv2_module('test')         # initialize SSD
     # net.load_state_dict(torch.load(args.trained_model))
     net.load_state_dict({k.replace('module.',''):v 
                         for k,v in torch.load(args.trained_model).items()})
