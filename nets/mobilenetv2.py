@@ -82,7 +82,7 @@ class ssd_block(nn.Module):
 
 mbox = [4, 6, 6, 6, 4, 4]
 loc = [
-    nn.Conv2d(32, mbox[0] * 4, kernel_size=3, padding=1),
+    nn.Conv2d(192, mbox[0] * 4, kernel_size=3, padding=1),
     nn.Conv2d(384, mbox[1] * 4, kernel_size=3, padding=1),
     nn.Conv2d(512, mbox[2] * 4, kernel_size=3, padding=1),
     nn.Conv2d(256, mbox[3] * 4, kernel_size=3, padding=1),
@@ -90,7 +90,7 @@ loc = [
     nn.Conv2d(128, mbox[5] * 4, kernel_size=3, padding=1),
 ]
 conf = [
-    nn.Conv2d(32, mbox[0] * 21, kernel_size=3, padding=1),
+    nn.Conv2d(192, mbox[0] * 21, kernel_size=3, padding=1),
     nn.Conv2d(384, mbox[1] * 21, kernel_size=3, padding=1),
     nn.Conv2d(512, mbox[2] * 21, kernel_size=3, padding=1),
     nn.Conv2d(256, mbox[3] * 21, kernel_size=3, padding=1),
@@ -181,7 +181,7 @@ class MobileNetV2(nn.Module):
         self.priorbox = PriorBox(voc)
         with torch.no_grad():
             self.priors = self.priorbox.forward()
-        self.L2Norm = L2Norm(32, 20)
+        self.L2Norm = L2Norm(192, 20)
 
         # # building classifier
         # self.classifier = nn.Sequential(
@@ -190,7 +190,7 @@ class MobileNetV2(nn.Module):
         # )
         self.detect = Detect()
         self.softmax = nn.Softmax(dim=-1)
-        self.adaptation = nn.Conv2d(32, 512, 1, 1, 0)
+        self.adaptation = nn.Conv2d(192, 512, 1, 1, 0)
         self._initialize_weights()
 
     def forward(self, x):
@@ -201,11 +201,17 @@ class MobileNetV2(nn.Module):
         for i in range(7):
             x = self.features[i](x)
 
+        for i in range(3):
+            x = self.features[7].conv[i](x)
+
         #adaption layer
         s = self.L2Norm(x)
         sources.append(s)
-      
-        for i in range(7, len(self.features)):
+
+        for i in range(3, len(self.features[7].conv)):
+            x = self.features[7].conv[i](x)
+
+        for i in range(8, len(self.features)):
             x = self.features[i](x)
         sources.append(x)
         
