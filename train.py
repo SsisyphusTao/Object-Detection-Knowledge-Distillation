@@ -18,15 +18,15 @@ gamma = 0.1
 parser = argparse.ArgumentParser(
     description='VGG Distillation Mobilenetv2')
 train_set = parser.add_mutually_exclusive_group()
-parser.add_argument('--batch_size', default=32, type=int,
+parser.add_argument('--batch_size', default=8, type=int,
                     help='Batch size for training')
-parser.add_argument('--resume', default=None, type=str,
+parser.add_argument('--resume', default='models/mb2-ssd-lite-mp-0_686.pth', type=str,
                     help='Checkpoint state_dict file to resume training from')
 parser.add_argument('--start_iter', default=0, type=int,
                     help='Resume training at this iter')
-parser.add_argument('--num_workers', default=4, type=int,
+parser.add_argument('--num_workers', default=1, type=int,
                     help='Number of workers used in dataloading')
-parser.add_argument('--lr', '--learning-rate', default=1e-2, type=float,
+parser.add_argument('--lr', '--learning-rate', default=1e-5, type=float,
                     help='initial learning rate')
 args = parser.parse_args()
 
@@ -50,10 +50,10 @@ def train():
     vgg_test = vgg_module('train')
     vgg_test.load_weights('./models/ssd300_mAP_77.43_v2.pth')
     vgg_test.eval()
-    vgg_test = nn.DataParallel(vgg_test.cuda(), device_ids=[0, 1])
+    vgg_test = nn.DataParallel(vgg_test.cuda(), device_ids=[0])
     # vgg_test = vgg_test.cuda()
 
-    mobilenetv2_test = mobilenetv2_module('train')
+    mobilenetv2_test = create_mobilenetv2_ssd_lite('train')
     if args.resume:
         mobilenetv2_test.load_state_dict({k.replace('module.',''):v 
         for k,v in torch.load(args.resume).items()})
@@ -114,7 +114,7 @@ def train():
         # backprop
         optimizer.zero_grad()
         loss_hint = l2_loss(mbv2_predictions[-1], vgg_predictions[-1])
-        loss_ssd = criterion(mbv2_predictions[:3], vgg_predictions[:2], targets, max(1.-iteration/100000, 0.))
+        loss_ssd = criterion(mbv2_predictions[:3], vgg_predictions[:2], targets, 0)#max(1.-iteration/100000, 0.))
         loss = loss_ssd + loss_hint * 0.5
         loss.backward()
         optimizer.step()
