@@ -15,8 +15,8 @@ voc = {
     'feature_maps': [19, 10, 5, 3, 2, 1],
     'min_dim': 300,
     'steps': [16, 32, 64, 100, 150, 300],
-    'min_sizes': [60, 105, 150, 195, 240, 285],
-    'max_sizes': [105, 150, 195, 240, 285, 330],
+    'min_sizes': [60, 111, 162, 195, 240, 285],
+    'max_sizes': [111, 162, 213, 240, 285, 330],
     'aspect_ratios': [[2, 3], [2, 3], [2, 3], [2, 3], [2, 3], [2, 3]],
     'variance': [0.1, 0.2],
     'clip': True,
@@ -253,7 +253,7 @@ class MobileNetV2(nn.Module):
                 loc.view(loc.size(0), -1, 4),
                 conf.view(conf.size(0), -1, self.num_classes),
                 self.priors,
-                nn.Conv2d(32, 512, 1, 1, 0)(s)
+                nn.BatchNorm2d(512)(nn.Conv2d(32, 512, 1, 1, 0)(s)), 
             )
 
         return output
