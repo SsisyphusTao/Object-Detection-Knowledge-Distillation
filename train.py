@@ -50,7 +50,7 @@ def train():
     vgg_test = vgg_module('train')
     vgg_test.load_weights('./models/ssd300_mAP_77.43_v2.pth')
     vgg_test.eval()
-    vgg_test = nn.DataParallel(vgg_test.cuda(), device_ids=[0])
+    vgg_test = nn.DataParallel(vgg_test.cuda(), device_ids=[0, 1])
     # vgg_test = vgg_test.cuda()
 
     mobilenetv2_test = mobilenetv2_module('train')

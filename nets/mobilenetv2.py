@@ -190,7 +190,8 @@ class MobileNetV2(nn.Module):
         # )
         self.detect = Detect()
         self.softmax = nn.Softmax(dim=-1)
-        self.adaptation = nn.Conv2d(192, 512, 1, 1, 0)
+        self.adaptation = nn.Sequential(nn.Conv2d(192, 512, 1, 1, 0),
+                                        nn.BatchNorm2d(512))
         self._initialize_weights()
 
     def forward(self, x):
