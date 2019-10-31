@@ -99,18 +99,11 @@ def train():
         except StopIteration:
             batch_iterator = iter(data_loader)
             images, targets = next(batch_iterator)
-        images =  images.cuda()
-        vgg_images = images.clone()
-        mask = images[:,0,:,:]+images[:,1,:,:]+images[:,2,:,:]
-        mask = mask.unsqueeze(1).expand_as(images)
-        images[:,0,:,:].add_(104)
-        images[:,1,:,:].add_(117)
-        images[:,2,:,:].add_(123)
-        images = torch.where(mask>0, images.sub(127).div_(128.), images.mul(0))
+        images = images.cuda()
         # forward
         t0 = time.time()
-        mbv2_predictions = mobilenetv2_test(images)
-        vgg_predictions = vgg_test(vgg_images)
+        mbv2_predictions = mobilenetv2_test(images.div(128.))
+        vgg_predictions = vgg_test(images)
         # backprop
         optimizer.zero_grad()
         loss_hint = l2_loss(mbv2_predictions[-1], vgg_predictions[-1])
@@ -124,7 +117,7 @@ def train():
             print('iter ' + repr(iteration) + ' | timer: %.4f sec.' % (t1 - t0))
             print('Loss: ' + str(loss.cpu().detach().numpy()))
 
-        if iteration != 0 and iteration % 2560 == 0:
+        if iteration != 0 and iteration % 2000 == 0:
             print('Saving state, iter:', iteration)
             torch.save(mobilenetv2_test.state_dict(), 'models/student_mbv2_' +
                        repr(iteration) + '.pth')
