@@ -129,35 +129,35 @@ class InvertedResidual(nn.Module):
             return x + self.conv(x)
         else:
             return self.conv(x)
-
+wr = 1.5
 extras = nn.ModuleList([
-    InvertedResidual(1280, 512, stride=2, expand_ratio=0.2),
-    InvertedResidual(512, 256, stride=2, expand_ratio=0.25),
-    InvertedResidual(256, 256, stride=2, expand_ratio=0.5),
-    InvertedResidual(256, 64, stride=2, expand_ratio=0.25)
+    InvertedResidual(round(1280*wr), round(512*wr), stride=2, expand_ratio=0.2),
+    InvertedResidual(round(512*wr), round(256*wr), stride=2, expand_ratio=0.25),
+    InvertedResidual(round(256*wr), round(256*wr), stride=2, expand_ratio=0.5),
+    InvertedResidual(round(256*wr), round(64*wr), stride=2, expand_ratio=0.25)
 ])
 
 regression_headers = nn.ModuleList([
-    SeperableConv2d(in_channels=round(576 * 1.0), out_channels=6 * 4,
+    SeperableConv2d(in_channels=round(576 * wr), out_channels=6 * 4,
                     kernel_size=3, padding=1, onnx_compatible=False),
-    SeperableConv2d(in_channels=1280, out_channels=6 * 4, kernel_size=3, padding=1, onnx_compatible=False),
-    SeperableConv2d(in_channels=512, out_channels=6 * 4, kernel_size=3, padding=1, onnx_compatible=False),
-    SeperableConv2d(in_channels=256, out_channels=6 * 4, kernel_size=3, padding=1, onnx_compatible=False),
-    SeperableConv2d(in_channels=256, out_channels=6 * 4, kernel_size=3, padding=1, onnx_compatible=False),
-    nn.Conv2d(in_channels=64, out_channels=6 * 4, kernel_size=1),
+    SeperableConv2d(in_channels=round(1280*wr), out_channels=6 * 4, kernel_size=3, padding=1, onnx_compatible=False),
+    SeperableConv2d(in_channels=round(512*wr), out_channels=6 * 4, kernel_size=3, padding=1, onnx_compatible=False),
+    SeperableConv2d(in_channels=round(256*wr), out_channels=6 * 4, kernel_size=3, padding=1, onnx_compatible=False),
+    SeperableConv2d(in_channels=round(256*wr), out_channels=6 * 4, kernel_size=3, padding=1, onnx_compatible=False),
+    nn.Conv2d(in_channels=round(64*wr), out_channels=6 * 4, kernel_size=1),
 ])
 
 classification_headers = nn.ModuleList([
-    SeperableConv2d(in_channels=round(576 * 1.0), out_channels=6 * 21, kernel_size=3, padding=1),
-    SeperableConv2d(in_channels=1280, out_channels=6 * 21, kernel_size=3, padding=1),
-    SeperableConv2d(in_channels=512, out_channels=6 * 21, kernel_size=3, padding=1),
-    SeperableConv2d(in_channels=256, out_channels=6 * 21, kernel_size=3, padding=1),
-    SeperableConv2d(in_channels=256, out_channels=6 * 21, kernel_size=3, padding=1),
-    nn.Conv2d(in_channels=64, out_channels=6 * 21, kernel_size=1),
+    SeperableConv2d(in_channels=round(576 * wr), out_channels=6 * 21, kernel_size=3, padding=1),
+    SeperableConv2d(in_channels=round(1280*wr), out_channels=6 * 21, kernel_size=3, padding=1),
+    SeperableConv2d(in_channels=round(512*wr), out_channels=6 * 21, kernel_size=3, padding=1),
+    SeperableConv2d(in_channels=round(256*wr), out_channels=6 * 21, kernel_size=3, padding=1),
+    SeperableConv2d(in_channels=round(256*wr), out_channels=6 * 21, kernel_size=3, padding=1),
+    nn.Conv2d(in_channels=round(64*wr), out_channels=6 * 21, kernel_size=1),
 ])
 
 class MobileNetV2(nn.Module):
-    def __init__(self, loc, conf, extras, mode, n_class=21, input_size=300, width_mult=1., dropout_ratio=0.2,
+    def __init__(self, loc, conf, extras, mode, n_class=21, input_size=300, width_mult=wr, dropout_ratio=0.2,
                  use_batch_norm=True, onnx_compatible=False):
         super(MobileNetV2, self).__init__()
         self.num_classes = n_class
@@ -204,6 +204,7 @@ class MobileNetV2(nn.Module):
 
         self.detect = Detect()
         self.priorbox = PriorBox(voc)
+        self.L2Norm = L2Norm(round(32*width_mult), 20)
         with torch.no_grad():
             self.priors = self.priorbox.forward()
         self._initialize_weights()
@@ -215,7 +216,7 @@ class MobileNetV2(nn.Module):
 
         for i in range(7):
             x = self.base_net[i](x)
-        s = L2Norm(32, 20)(x)
+        s = self.L2Norm(x)
 
         for i in range(7, 14):
             x = self.base_net[i](x)
@@ -252,10 +253,8 @@ class MobileNetV2(nn.Module):
             output = (
                 loc.view(loc.size(0), -1, 4),
                 conf.view(conf.size(0), -1, self.num_classes),
-                self.priors,
-                nn.BatchNorm2d(512)(nn.Conv2d(32, 512, 1, 1, 0)(s)), 
+                self.priors
             )
-
         return output
 
     def _initialize_weights(self):
