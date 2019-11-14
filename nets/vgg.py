@@ -136,6 +136,7 @@ class vgg_ssd(nn.Module):
         for k in range(23, len(self.vgg)):
             x = self.vgg[k](x)
         sources.append(x)
+        apt = x
 
         # apply extra layers and cache source layer outputs
         for k, v in enumerate(self.extras):
@@ -163,7 +164,7 @@ class vgg_ssd(nn.Module):
                 loc.view(loc.size(0), -1, 4),
                 conf.view(conf.size(0), -1, self.num_classes),
                 self.priors,
-                s
+                apt
             )
 
         return output

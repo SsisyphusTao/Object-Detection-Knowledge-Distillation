@@ -190,7 +190,7 @@ class MobileNetV2(nn.Module):
         # )
         self.detect = Detect()
         self.softmax = nn.Softmax(dim=-1)
-        self.adaptation = nn.Sequential(nn.Conv2d(192, 512, 1, 1, 0))
+        self.adaptation = nn.Conv2d(384, 1024, 1, 1, 0)
         self._initialize_weights()
 
     def forward(self, x):
@@ -214,6 +214,7 @@ class MobileNetV2(nn.Module):
         for i in range(8, len(self.features)):
             x = self.features[i](x)
         sources.append(x)
+        apt = x
         
         for block in self.ssd:
             x = block(x)
@@ -238,7 +239,7 @@ class MobileNetV2(nn.Module):
                 loc.view(loc.size(0), -1, 4),
                 conf.view(conf.size(0), -1, self.num_classes),
                 self.priors,
-                self.adaptation(s)
+                self.adaptation(apt)
             )
         # x = self.features(x)
         # x = x.mean(3).mean(2)

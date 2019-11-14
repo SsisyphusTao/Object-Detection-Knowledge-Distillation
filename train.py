@@ -4,7 +4,6 @@ from torch import nn
 import torch.optim as optim
 import torch.utils.data as data
 from nets import vgg_module, mobilenetv2_module
-from nets.mobilenet_v2_ssd_lite import create_mobilenetv2_ssd_lite
 from penguin import getsingleimg
 from nets.multibox_loss import MultiBoxLoss
 from utils.augmentations import SSDAugmentation
@@ -13,18 +12,17 @@ import time
 
 dataset_root = '/home/tao/data/VOCdevkit/'
 save_folder = './models/'
-gamma = 0.1
 
 parser = argparse.ArgumentParser(
     description='VGG Distillation Mobilenetv2')
 train_set = parser.add_mutually_exclusive_group()
-parser.add_argument('--batch_size', default=32, type=int,
+parser.add_argument('--batch_size', default=64, type=int,
                     help='Batch size for training')
 parser.add_argument('--resume', default=None, type=str,
                     help='Checkpoint state_dict file to resume training from')
 parser.add_argument('--start_iter', default=0, type=int,
                     help='Resume training at this iter')
-parser.add_argument('--num_workers', default=4, type=int,
+parser.add_argument('--num_workers', default=8, type=int,
                     help='Number of workers used in dataloading')
 parser.add_argument('--lr', '--learning-rate', default=1e-2, type=float,
                     help='initial learning rate')
@@ -50,7 +48,7 @@ def train():
     vgg_test = vgg_module('train')
     vgg_test.load_weights('./models/ssd300_mAP_77.43_v2.pth')
     vgg_test.eval()
-    vgg_test = nn.DataParallel(vgg_test.cuda(), device_ids=[0, 1])
+    vgg_test = nn.DataParallel(vgg_test.cuda(), device_ids=[0])
     # vgg_test = vgg_test.cuda()
 
     mobilenetv2_test = mobilenetv2_module('train')
@@ -74,12 +72,13 @@ def train():
 
     print('Loading the dataset...')
 
-    epoch_size = len(dataset) // args.batch_size
+    # epoch_size = len(dataset) // args.batch_size
     print('Training SSD on:', dataset.name)
     print('Using the specified args:')
     print(args)
 
     step_index = 0
+    loss_amount = 0
 
     data_loader = data.DataLoader(dataset, args.batch_size,
                                   num_workers=args.num_workers,
@@ -89,9 +88,9 @@ def train():
     # create batch iterator
     batch_iterator = iter(data_loader)
     for iteration in range(args.start_iter, cfg['max_iter']):
-        if iteration in cfg['lr_steps']:
+        if iteration in (50000, 80000, 100000):
             step_index += 1
-            adjust_learning_rate(optimizer, gamma, step_index)
+            adjust_learning_rate(optimizer, 0.2, step_index)
 
         # load train data
         try:
@@ -102,7 +101,7 @@ def train():
         images = images.cuda()
         # forward
         t0 = time.time()
-        mbv2_predictions = mobilenetv2_test(images.div(128.))
+        mbv2_predictions = mobilenetv2_test(images)
         vgg_predictions = vgg_test(images)
         # backprop
         optimizer.zero_grad()
@@ -113,11 +112,13 @@ def train():
         optimizer.step()
         t1 = time.time()
 
-        if iteration % 10 == 0:
-            print('iter ' + repr(iteration) + ' | timer: %.4f sec.' % (t1 - t0))
-            print('Loss: ' + str(loss.cpu().detach().numpy()))
+        loss_amount += loss.cpu().detach().numpy()
 
-        if iteration != 0 and iteration % 2000 == 0:
+        if iteration % 10 == 0 and not (iteration-args.start_iter) == 0:
+            print('iter ' + repr(iteration) + ' | timer: %.4f sec.' % (t1 - t0))
+            print('Loss: %.6f' %(loss_amount/(iteration-args.start_iter)))
+
+        if not (iteration-args.start_iter) == 0 and iteration % 2000 == 0:
             print('Saving state, iter:', iteration)
             torch.save(mobilenetv2_test.state_dict(), 'models/student_mbv2_' +
                        repr(iteration) + '.pth')
