@@ -16,13 +16,13 @@ save_folder = './models/'
 parser = argparse.ArgumentParser(
     description='VGG Distillation Mobilenetv2')
 train_set = parser.add_mutually_exclusive_group()
-parser.add_argument('--batch_size', default=64, type=int,
+parser.add_argument('--batch_size', default=32, type=int,
                     help='Batch size for training')
 parser.add_argument('--resume', default=None, type=str,
                     help='Checkpoint state_dict file to resume training from')
 parser.add_argument('--start_iter', default=0, type=int,
                     help='Resume training at this iter')
-parser.add_argument('--num_workers', default=8, type=int,
+parser.add_argument('--num_workers', default=4, type=int,
                     help='Number of workers used in dataloading')
 parser.add_argument('--lr', '--learning-rate', default=1e-2, type=float,
                     help='initial learning rate')
@@ -48,8 +48,7 @@ def train():
     vgg_test = vgg_module('train')
     vgg_test.load_weights('./models/ssd300_mAP_77.43_v2.pth')
     vgg_test.eval()
-    vgg_test = nn.DataParallel(vgg_test.cuda(), device_ids=[0])
-    # vgg_test = vgg_test.cuda()
+    vgg_test = nn.DataParallel(vgg_test.cuda(), device_ids=[0,1])
 
     mobilenetv2_test = mobilenetv2_module('train')
     if args.resume:
@@ -57,7 +56,6 @@ def train():
         for k,v in torch.load(args.resume).items()})
     mobilenetv2_test.train()
     mobilenetv2_test = nn.DataParallel(mobilenetv2_test.cuda(), device_ids=[0])
-    # mobilenetv2_test=mobilenetv2_test.cuda()
     torch.backends.cudnn.benchmark = True
 
     dataset = VOCDetection(root=dataset_root,
@@ -65,8 +63,11 @@ def train():
                            transform=SSDAugmentation(cfg['min_dim'],
                                                      MEANS))
 
-    optimizer = optim.SGD(mobilenetv2_test.parameters(), lr=args.lr, momentum=0.9,
-                          weight_decay=5e-4)
+    # optimizer = optim.SGD(mobilenetv2_test.parameters(), lr=args.lr, momentum=0.9,
+    #                       weight_decay=5e-4)
+    optimizer = optim.RMSprop(mobilenetv2_test.parameters(), lr=args.lr, momentum=0.9,
+                              weight_decay=5e-4)
+
     criterion = MultiBoxLoss(cfg['num_classes'], 0.5, True, 0, True, 3, 0.5,
                              False)
 
