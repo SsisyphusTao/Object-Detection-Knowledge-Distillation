@@ -16,15 +16,15 @@ save_folder = './models/'
 parser = argparse.ArgumentParser(
     description='VGG Distillation Mobilenetv2')
 train_set = parser.add_mutually_exclusive_group()
-parser.add_argument('--batch_size', default=32, type=int,
+parser.add_argument('--batch_size', default=64, type=int,
                     help='Batch size for training')
-parser.add_argument('--resume', default=None, type=str,
+parser.add_argument('--resume', default='models/student_mbv2_pre_6131.pth', type=str,
                     help='Checkpoint state_dict file to resume training from')
 parser.add_argument('--start_iter', default=0, type=int,
                     help='Resume training at this iter')
-parser.add_argument('--num_workers', default=4, type=int,
+parser.add_argument('--num_workers', default=8, type=int,
                     help='Number of workers used in dataloading')
-parser.add_argument('--lr', '--learning-rate', default=1e-2, type=float,
+parser.add_argument('--lr', '--learning-rate', default=1e-4, type=float,
                     help='initial learning rate')
 args = parser.parse_args()
 
@@ -48,14 +48,14 @@ def train():
     vgg_test = vgg_module('train')
     vgg_test.load_weights('./models/ssd300_mAP_77.43_v2.pth')
     vgg_test.eval()
-    vgg_test = nn.DataParallel(vgg_test.cuda(), device_ids=[0,1])
+    vgg_test = nn.DataParallel(vgg_test.cuda(), device_ids=[0,1,2])
 
     mobilenetv2_test = mobilenetv2_module('train')
     if args.resume:
         mobilenetv2_test.load_state_dict({k.replace('module.',''):v 
         for k,v in torch.load(args.resume).items()})
     mobilenetv2_test.train()
-    mobilenetv2_test = nn.DataParallel(mobilenetv2_test.cuda(), device_ids=[0])
+    mobilenetv2_test = nn.DataParallel(mobilenetv2_test.cuda(), device_ids=[0,2])
     torch.backends.cudnn.benchmark = True
 
     dataset = VOCDetection(root=dataset_root,
@@ -63,10 +63,8 @@ def train():
                            transform=SSDAugmentation(cfg['min_dim'],
                                                      MEANS))
 
-    # optimizer = optim.SGD(mobilenetv2_test.parameters(), lr=args.lr, momentum=0.9,
-    #                       weight_decay=5e-4)
-    optimizer = optim.RMSprop(mobilenetv2_test.parameters(), lr=args.lr, momentum=0.9,
-                              weight_decay=5e-4)
+    optimizer = optim.SGD(mobilenetv2_test.parameters(), lr=args.lr, momentum=0.9,
+                          weight_decay=5e-4)
 
     criterion = MultiBoxLoss(cfg['num_classes'], 0.5, True, 0, True, 3, 0.5,
                              False)
@@ -102,13 +100,13 @@ def train():
         images = images.cuda()
         # forward
         t0 = time.time()
-        mbv2_predictions = mobilenetv2_test(images)
+        mbv2_predictions = mobilenetv2_test(images.div(128.))
         vgg_predictions = vgg_test(images)
         # backprop
         optimizer.zero_grad()
-        loss_hint = l2_loss(mbv2_predictions[-1], vgg_predictions[-1])
-        loss_ssd = criterion(mbv2_predictions[:3], vgg_predictions[:2], targets, max(1.-iteration/100000, 0.))
-        loss = loss_ssd + loss_hint * 0.5
+        # loss_hint = l2_loss(mbv2_predictions[-1], vgg_predictions[-1])
+        loss_ssd = criterion(mbv2_predictions[:3], vgg_predictions[:2], targets, 1)#max(1.-iteration/100000, 0.))
+        loss = loss_ssd #+ loss_hint * 0.5
         loss.backward()
         optimizer.step()
         t1 = time.time()
@@ -119,7 +117,7 @@ def train():
             print('iter ' + repr(iteration) + ' | timer: %.4f sec.' % (t1 - t0))
             print('Loss: %.6f' %(loss_amount/(iteration-args.start_iter)))
 
-        if not (iteration-args.start_iter) == 0 and iteration % 2000 == 0:
+        if not (iteration-args.start_iter) == 0 and iteration % 4000 == 0:
             print('Saving state, iter:', iteration)
             torch.save(mobilenetv2_test.state_dict(), 'models/student_mbv2_' +
                        repr(iteration) + '.pth')
