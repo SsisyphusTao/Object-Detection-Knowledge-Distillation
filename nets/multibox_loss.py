@@ -132,9 +132,9 @@ class MultiBoxLoss(nn.Module):
         loss_l = F.smooth_l1_loss(loc_p, loc_t, reduction='sum')
 
         #Regression with Teacher Bounds
-        # locT_p = locT[pos_idx].view(-1, 4) #same, select out teacher's boxes should be positive(the location prediciton of teacher)
-        # loss_br = bounded_regression_loss(loc_p, locT_p, loc_t, self.reg_m)
-        loss_reg = loss_l# + loss_br
+        locT_p = locT[pos_idx].view(-1, 4) #same, select out teacher's boxes should be positive(the location prediciton of teacher)
+        loss_br = bounded_regression_loss(loc_p, locT_p, loc_t, self.reg_m)
+        loss_reg = loss_l + loss_br
 
         # Compute max conf across batch for hard negative mining
         batch_conf = conf_data.view(-1, self.num_classes)
@@ -155,13 +155,13 @@ class MultiBoxLoss(nn.Module):
         neg_idx = neg.unsqueeze(2).expand_as(conf_data)
         conf_p = conf_data[(pos_idx+neg_idx).gt(0)].view(-1, self.num_classes)
         targets_weighted = conf_t[(pos+neg).gt(0)] # gt means greater than(>)
-
-        # modified original code here: add softmax before cross_entropy
-        conf_p = F.softmax(conf_p/self.T, dim=1)
+        
+        # modified original code here: add softmax before cross_entropy(!!!)
         loss_c = F.cross_entropy(conf_p, targets_weighted, reduction='sum')
 
         #soft loss from teacher
         confT_p = confT[(pos_idx+neg_idx).gt(0)].view(-1, self.num_classes)
+        conf_p = F.softmax(conf_p/self.T, dim=1)
         confT_p = F.softmax(confT_p/self.T, dim=1)
         loss_soft = weighted_KL_div(conf_p, confT_p, self.pos_w, self.neg_w)
 
