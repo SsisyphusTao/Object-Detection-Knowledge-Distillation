@@ -36,7 +36,7 @@ def str2bool(v):
 parser = argparse.ArgumentParser(
     description='Single Shot MultiBox Detector Evaluation')
 parser.add_argument('--trained_model',
-                    default='models/teacher_mbv2lite_60000.pth', type=str,
+                    default='models/mb2-ssd-lite-mp-0_686.pth', type=str,
                     help='Trained state_dict file path to open')
 parser.add_argument('--save_folder', default='eval/', type=str,
                     help='File path to save results')
@@ -429,7 +429,7 @@ if __name__ == '__main__':
     print('Finished loading model!')
     # load data
     dataset = VOCDetection(args.voc_root, [('2007', set_type)],
-                           BaseTransform(300, dataset_mean),
+                           BaseTransform(300, (127., 127., 127.)),
                            VOCAnnotationTransform())
     if args.cuda:
         net = net.cuda()

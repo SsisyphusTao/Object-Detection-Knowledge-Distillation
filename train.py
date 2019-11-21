@@ -105,7 +105,7 @@ def train():
         # backprop
         optimizer.zero_grad()
         loss_hint = l2_loss(mbv2_predictions[-1], vgg_predictions[-1])
-        loss_ssd = criterion(mbv2_predictions[:3], vgg_predictions[:2], targets, 0)#max(1.-iteration/100000, 0.))
+        loss_ssd = criterion(mbv2_predictions[:3], vgg_predictions[:2], targets, max(1.-iteration/100000, 0.))
         loss = loss_ssd + loss_hint * 0.5
         loss.backward()
         optimizer.step()

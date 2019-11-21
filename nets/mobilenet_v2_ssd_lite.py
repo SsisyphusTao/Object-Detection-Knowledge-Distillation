@@ -129,7 +129,7 @@ class InvertedResidual(nn.Module):
             return x + self.conv(x)
         else:
             return self.conv(x)
-wr = 1.5
+wr = 1.0
 extras = nn.ModuleList([
     InvertedResidual(round(1280*wr), round(512*wr), stride=2, expand_ratio=0.2),
     InvertedResidual(round(512*wr), round(256*wr), stride=2, expand_ratio=0.25),
@@ -204,7 +204,8 @@ class MobileNetV2(nn.Module):
 
         self.detect = Detect()
         self.priorbox = PriorBox(voc)
-        self.L2Norm = L2Norm(round(32*width_mult), 20)
+        # self.L2Norm = L2Norm(round(32*width_mult), 20)
+        # self.adaptation = nn.Sequential(nn.Conv2d(round(32*width_mult), 512, 1, 1, 0))
         with torch.no_grad():
             self.priors = self.priorbox.forward()
         self._initialize_weights()
@@ -216,7 +217,7 @@ class MobileNetV2(nn.Module):
 
         for i in range(7):
             x = self.base_net[i](x)
-        s = self.L2Norm(x)
+        s = L2Norm(round(32*wr), 20)(x)
 
         for i in range(7, 14):
             x = self.base_net[i](x)
@@ -253,7 +254,8 @@ class MobileNetV2(nn.Module):
             output = (
                 loc.view(loc.size(0), -1, 4),
                 conf.view(conf.size(0), -1, self.num_classes),
-                self.priors
+                self.priors,
+                self.adaptation(s)
             )
         return output
 
