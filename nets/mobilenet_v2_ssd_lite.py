@@ -217,7 +217,7 @@ class MobileNetV2(nn.Module):
 
         for i in range(7):
             x = self.base_net[i](x)
-        s = L2Norm(round(32*wr), 20)(x)
+        # s = self.L2Norm(x)
 
         for i in range(7, 14):
             x = self.base_net[i](x)
@@ -255,7 +255,7 @@ class MobileNetV2(nn.Module):
                 loc.view(loc.size(0), -1, 4),
                 conf.view(conf.size(0), -1, self.num_classes),
                 self.priors,
-                self.adaptation(s)
+                # self.adaptation(s)
             )
         return output
 

@@ -102,8 +102,7 @@ class MultiBoxLoss(nn.Module):
         num_classes = self.num_classes
         self.u = u
         #predicions of teachers
-        locT, confT = predT
-        # confT = torch.cat((confT, conf_data[:, 2916:, :]), 1)
+        locT, confT, priorsT = predT
 
         # match priors (default boxes) and ground truth boxes
         loc_t = torch.Tensor(num, num_priors, 4) # grond truch
@@ -130,7 +129,16 @@ class MultiBoxLoss(nn.Module):
         loc_p = loc_data[pos_idx].view(-1, 4) # select out the box should be positive from predictions
         loc_t = loc_t[pos_idx].view(-1, 4) # same as above
         loss_l = F.smooth_l1_loss(loc_p, loc_t, reduction='sum')
-
+            
+        for j in range(1, r.size(1)):
+            dets = r[0, j, :]
+            mask = dets[:, 0].gt(0.).expand(5, dets.size(0)).t() # expand -> copy value; t -> Transpose; all these two is making score to the same dim of location
+            dets = torch.masked_select(dets, mask).view(-1, 5)  # select out valid boxes and separate them
+            if dets.size(0) == 0:
+                continue
+        boxes = dets[:, 1:].numpy()[0]
+        print(dets[:, 0].numpy()[0])
+        exit()
         #Regression with Teacher Bounds
         locT_p = locT[pos_idx].view(-1, 4) #same, select out teacher's boxes should be positive(the location prediciton of teacher)
         loss_br = bounded_regression_loss(loc_p, locT_p, loc_t, self.reg_m)
