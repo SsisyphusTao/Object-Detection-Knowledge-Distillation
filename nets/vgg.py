@@ -4,6 +4,7 @@ from torch.nn import functional as F
 from .prior_box import PriorBox
 from .l2norm import L2Norm
 from .detection import Detect
+import math
 
 
 def vgg16(cfg, i, batch_norm=False):
@@ -49,13 +50,13 @@ def add_extras(cfg, i, batch_norm=False):
 def multibox(vgg, extra_layers, cfg, num_classes=21):
     loc_layers = []
     conf_layers = []
-    vgg_source = [21, -2]
+    vgg_source = [-2]#[21, -2]
     for k, v in enumerate(vgg_source):
         loc_layers += [nn.Conv2d(vgg[v].out_channels,
                                  cfg[k] * 4, kernel_size=3, padding=1)]
         conf_layers += [nn.Conv2d(vgg[v].out_channels,
                         cfg[k] * num_classes, kernel_size=3, padding=1)]
-    for k, v in enumerate(extra_layers[1::2], 2):
+    for k, v in enumerate(extra_layers[1::2], len(vgg_source)):
         loc_layers += [nn.Conv2d(v.out_channels, cfg[k]
                                  * 4, kernel_size=3, padding=1)]
         conf_layers += [nn.Conv2d(v.out_channels, cfg[k]
@@ -65,35 +66,23 @@ def multibox(vgg, extra_layers, cfg, num_classes=21):
 
 vgg = [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'C', 512, 512, 512, 'M',
             512, 512, 512]
-ssd = [256, 'S', 512, 128, 'S', 256, 128, 256, 128, 256]
-mbox = [4, 6, 6, 6, 4, 4]
+ssd = [256, 'S', 512, 128, 'S', 256, 128, 'S', 256, 128, 'S', 256, 128, 'S', 256]
+mbox = [6, 6, 6, 6, 6, 6]
 
 vgg_, ssd_, head_ = multibox(vgg16(vgg, 3),
                                      add_extras(ssd, 1024),
                                      mbox)
 
-# for i in vgg_:
-#     print(i)
-# print('---------------------------------------------------------------')
-# for i in ssd_:
-#     print(i)
-# print('---------------------------------------------------------------')
-# for i in head_:
-#     for j in i:
-#         print(j)
-#     print('---------------------------------------------------------------')
-# print(vgg_[21])
-# print(vgg_[-2])
 voc = {
     'num_classes': 21,
     'lr_steps': (80000, 100000, 120000),
     'max_iter': 120000,
-    'feature_maps': [38, 19, 10, 5, 3, 1],
+    'feature_maps': [19, 10, 5, 3, 2, 1],
     'min_dim': 300,
-    'steps': [8, 16, 32, 64, 100, 300],
-    'min_sizes': [30, 60, 111, 162, 213, 264],
-    'max_sizes': [60, 111, 162, 213, 264, 315],
-    'aspect_ratios': [[2], [2, 3], [2, 3], [2, 3], [2], [2]],
+    'steps': [16, 32, 64, 100, 150, 300],
+    'min_sizes': [60, 105, 150, 195, 240, 285],
+    'max_sizes': [105, 150, 195, 240, 285, 330],
+    'aspect_ratios': [[2, 3], [2, 3], [2, 3], [2, 3], [2, 3], [2, 3]],
     'variance': [0.1, 0.2],
     'clip': True,
     'name': 'VOC',
@@ -111,7 +100,7 @@ class vgg_ssd(nn.Module):
         
         self.vgg = nn.ModuleList(backbone)
         # Layer learns to scale the l2 normalized features from conv4_3
-        self.L2Norm = L2Norm(512, 20)
+        self.L2Norm = L2Norm(1024, 20)
         self.extras = nn.ModuleList(ssd)
 
         self.loc = nn.ModuleList(head[0])
@@ -119,6 +108,8 @@ class vgg_ssd(nn.Module):
         
         self.softmax = nn.Softmax(dim=-1)
         self.detect = Detect()
+        self.adaptation = nn.Conv2d(512, 192, 1, 1, 0)
+        self._initialize_weights()
 
     def forward(self, x):
         sources = list()
@@ -128,21 +119,19 @@ class vgg_ssd(nn.Module):
         # apply vgg up to conv4_3 relu
         for k in range(23):
             x = self.vgg[k](x)
-
-        s = self.L2Norm(x)
-        sources.append(s)
+        adp = x
 
         # apply vgg up to fc7
         for k in range(23, len(self.vgg)):
             x = self.vgg[k](x)
-        sources.append(x)
+        s = self.L2Norm(x)
+        sources.append(s)
 
         # apply extra layers and cache source layer outputs
         for k, v in enumerate(self.extras):
             x = F.relu(v(x), inplace=True)
             if k % 2 == 1:
                 sources.append(x)
-
         # apply multibox head to source layers
         for (x, l, c) in zip(sources, self.loc, self.conf):
             loc.append(l(x).permute(0, 2, 3, 1).contiguous())
@@ -163,7 +152,7 @@ class vgg_ssd(nn.Module):
                 loc.view(loc.size(0), -1, 4),
                 conf.view(conf.size(0), -1, self.num_classes),
                 self.priors,
-                # s
+                self.adaptation(adp)
             )
 
         return output
@@ -171,6 +160,21 @@ class vgg_ssd(nn.Module):
     def load_weights(self, base_file):
         self.load_state_dict(torch.load(base_file,
                                         map_location=lambda storage, loc: storage))
+
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                m.weight.data.normal_(0, math.sqrt(2. / n))
+                if m.bias is not None:
+                    m.bias.data.zero_()
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
+            elif isinstance(m, nn.Linear):
+                n = m.weight.size(1)
+                m.weight.data.normal_(0, 0.01)
+                m.bias.data.zero_()
 
 def vgg_module(mode):
     return vgg_ssd(vgg_, ssd_, head_, mode)

@@ -204,8 +204,8 @@ class MobileNetV2(nn.Module):
 
         self.detect = Detect()
         self.priorbox = PriorBox(voc)
-        # self.L2Norm = L2Norm(round(32*width_mult), 20)
-        # self.adaptation = nn.Sequential(nn.Conv2d(round(32*width_mult), 512, 1, 1, 0))
+        self.L2Norm = L2Norm(round(32*width_mult), 20)
+        # self.adaptation = nn.Conv2d(round(32*width_mult), 512, 1, 1, 0)
         with torch.no_grad():
             self.priors = self.priorbox.forward()
         self._initialize_weights()
@@ -217,9 +217,14 @@ class MobileNetV2(nn.Module):
 
         for i in range(7):
             x = self.base_net[i](x)
-        # s = self.L2Norm(x)
 
-        for i in range(7, 14):
+        for i in range(3):
+            x = self.base_net[7].conv[i](x)
+        adp = x
+        for i in range(3, len(self.base_net[14].conv)):
+            x = self.base_net[7].conv[i](x)
+
+        for i in range(8, 14):
             x = self.base_net[i](x)
 
         for i in range(3):
@@ -255,7 +260,7 @@ class MobileNetV2(nn.Module):
                 loc.view(loc.size(0), -1, 4),
                 conf.view(conf.size(0), -1, self.num_classes),
                 self.priors,
-                # self.adaptation(s)
+                adp
             )
         return output
 
