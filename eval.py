@@ -37,7 +37,7 @@ def str2bool(v):
 parser = argparse.ArgumentParser(
     description='Single Shot MultiBox Detector Evaluation')
 parser.add_argument('--trained_model',
-                    default='models/teacher_vgg_final.pth', type=str,
+                    default='models/mb2-ssd-lite-mp-0_686.pth', type=str,
                     help='Trained state_dict file path to open')
 parser.add_argument('--save_folder', default='eval/', type=str,
                     help='File path to save results')
@@ -422,7 +422,7 @@ def evaluate_detections(box_list, output_dir, dataset):
 if __name__ == '__main__':
     # load net
     num_classes = len(labelmap) + 1                      # +1 for background
-    net = vgg_module('test')         # initialize SSD
+    net = create_mobilenetv2_ssd_lite('test')         # initialize SSD
     # net.load_state_dict(torch.load(args.trained_model))
     net.load_state_dict({k.replace('module.',''):v 
                         for k,v in torch.load(args.trained_model).items()})
