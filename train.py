@@ -16,15 +16,15 @@ save_folder = './models/'
 parser = argparse.ArgumentParser(
     description='VGG Distillation Mobilenetv2')
 train_set = parser.add_mutually_exclusive_group()
-parser.add_argument('--batch_size', default=32, type=int,
+parser.add_argument('--batch_size', default=64, type=int,
                     help='Batch size for training')
-parser.add_argument('--resume', default='models/mb2-ssd-lite-mp-0_686.pth', type=str,
+parser.add_argument('--resume', default='models/teacher_vgg_4000.pth', type=str,
                     help='Checkpoint state_dict file to resume training from')
-parser.add_argument('--start_iter', default=0, type=int,
+parser.add_argument('--start_iter', default=4000, type=int,
                     help='Resume training at this iter')
 parser.add_argument('--num_workers', default=8, type=int,
                     help='Number of workers used in dataloading')
-parser.add_argument('--lr', '--learning-rate', default=1e-3, type=float,
+parser.add_argument('--lr', '--learning-rate', default=1e-4, type=float,
                     help='initial learning rate')
 args = parser.parse_args()
 
@@ -46,14 +46,16 @@ def train():
     cfg = voc
     l2_loss = nn.MSELoss()
     vgg_test = vgg_module('train')
-    # vgg_test.load_weights('./models/ssd300_mAP_77.43_v2.pth')
+    # vgg_test.load_weights('models/teacher_vgg_pre_553.pth')
+    vgg_test.load_state_dict({k.replace('module.',''):v 
+    for k,v in torch.load(args.resume).items()}, strict=False)
     vgg_test.train()
     vgg_test = nn.DataParallel(vgg_test.cuda(), device_ids=[0,1,2])
 
     mobilenetv2_test = create_mobilenetv2_ssd_lite('train')
     if args.resume:
         missing, unexpected = mobilenetv2_test.load_state_dict({k.replace('module.',''):v 
-        for k,v in torch.load(args.resume).items()}, strict=False)
+        for k,v in torch.load('models/mb2-ssd-lite-mp-0_686.pth').items()}, strict=False)
         if missing:
             print('Missing:', missing)
         if unexpected:
@@ -63,7 +65,6 @@ def train():
     torch.backends.cudnn.benchmark = True
 
     dataset = VOCDetection(root=dataset_root,
-                           image_sets=[('2012', 'trainval')],
                            transform=SSDAugmentation(cfg['min_dim'],
                                                      MEANS))
 
@@ -90,7 +91,7 @@ def train():
     # create batch iterator
     batch_iterator = iter(data_loader)
     for iteration in range(args.start_iter, cfg['max_iter']):
-        if iteration in (50000, 80000, 100000):
+        if iteration in (40000, 80000, 100000, 120000):
             step_index += 1
             adjust_learning_rate(optimizer, 0.2, step_index)
 
@@ -108,8 +109,8 @@ def train():
         # backprop
         optimizer.zero_grad()
         loss_hint = l2_loss(vgg_predictions[-1], mbv2_predictions[-1])
-        loss_ssd = criterion(vgg_predictions[:3], mbv2_predictions[:2], targets, 0.5)
-        loss = loss_ssd + loss_hint * 0.5
+        loss_ssd = criterion(vgg_predictions[:3], mbv2_predictions[:2], targets, 0.75)
+        loss = loss_ssd #+ loss_hint * 0.5
         loss.backward()
         optimizer.step()
         t1 = time.time()
@@ -125,7 +126,7 @@ def train():
             torch.save(vgg_test.state_dict(), 'models/teacher_vgg_' +
                        repr(iteration) + '.pth')
     torch.save(vgg_test.state_dict(),
-               save_folder + 'teacher_vgg_final.pth')
+                'models/teacher_vgg_final.pth')
 
 if __name__ == '__main__':
     train()
