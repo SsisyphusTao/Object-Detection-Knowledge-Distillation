@@ -422,7 +422,7 @@ def evaluate_detections(box_list, output_dir, dataset):
 if __name__ == '__main__':
     # load net
     num_classes = len(labelmap) + 1                      # +1 for background
-    net = create_mobilenetv2_ssd_lite('test')         # initialize SSD
+    net = vgg_module('test')         # initialize SSD
     # net.load_state_dict(torch.load(args.trained_model))
     net.load_state_dict({k.replace('module.',''):v 
                         for k,v in torch.load(args.trained_model).items()})

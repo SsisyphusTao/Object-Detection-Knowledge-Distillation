@@ -11,21 +11,23 @@ import argparse
 import time
 
 dataset_root = '/home/tao/data/VOCdevkit/'
-save_folder = './models/'
-
 parser = argparse.ArgumentParser(
     description='VGG Distillation Mobilenetv2')
 train_set = parser.add_mutually_exclusive_group()
-parser.add_argument('--batch_size', default=32, type=int,
+parser.add_argument('--batch_size', default=64, type=int,
                     help='Batch size for training')
 parser.add_argument('--resume', default='models/mb2-ssd-lite-mp-0_686.pth', type=str,
                     help='Checkpoint state_dict file to resume training from')
+parser.add_argument('--epochs', default=200, type=int,
+                    help='the number of training epochs')
 parser.add_argument('--start_iter', default=0, type=int,
                     help='Resume training at this iter')
-parser.add_argument('--num_workers', default=4, type=int,
+parser.add_argument('--num_workers', default=8, type=int,
                     help='Number of workers used in dataloading')
-parser.add_argument('--lr', '--learning-rate', default=1e-4, type=float,
+parser.add_argument('--lr', '--learning-rate', default=1e-5, type=float,
                     help='initial learning rate')
+parser.add_argument('--save_folder', default='models/',
+                    help='Directory for saving checkpoint models')
 args = parser.parse_args()
 
 torch.set_default_tensor_type('torch.cuda.FloatTensor')
@@ -41,22 +43,37 @@ def adjust_learning_rate(optimizer, gamma, step):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
+def train_one_epoch(loader, student_net, teacher_net, criterion, optimizer, epoch):
+    loss_amount = 0
+    # load train data
+    for iteration, batch in enumerate(loader):
+        images, targets = batch
+        images = images.cuda()
+        # forward
+        t0 = time.time()
+        teacher_predictions = teacher_net(images.div(128.))
+        student_predictions = student_net(images.div(128.))
+        # backprop
+        optimizer.zero_grad()
+        # loss_hint = l2_loss(vgg_predictions[-1], mbv2_predictions[-1])
+        loss_ssd = criterion(student_predictions[:3], teacher_predictions[:2], targets)
+        loss = loss_ssd #+ loss_hint * 0.5
+        loss.backward()
+        optimizer.step()
+        t1 = time.time()
+        loss_amount += loss.cpu().detach().numpy()
+        if iteration % 10 == 0 and not iteration == 0:
+            print('Loss: %.6f | iter: %d | timer: %.4f sec. | epoch: %d' %
+                  (loss_amount/iteration, iteration, t1-t0, epoch))
 
 def train():
     cfg = voc
     l2_loss = nn.MSELoss()
-    # vgg_test = vgg_module('train')
-    # vgg_test.load_weights('models/teacher_vgg_pre_553.pth')
-    # vgg_test.load_state_dict({k.replace('module.',''):v 
-    # for k,v in torch.load(args.resume).items()}, strict=False)
-    # vgg_test.train()
-    # vgg_test = nn.DataParallel(vgg_test.cuda(), device_ids=[0,1,2])
-
-    teacher_net = create_mobilenetv2_ssd_lite('train')
-    teacher_net.load_state_dict({k.replace('module.',''):v 
-    for k,v in torch.load('models/mb2-ssd-lite-mp-0_686.pth').items()}, strict=False)
-    teacher_net.eval()
-    teacher_net = nn.DataParallel(teacher_net.cuda(), device_ids=[0,1])
+    vgg_test = vgg_module('train')
+    vgg_test.load_state_dict({k.replace('module.',''):v 
+    for k,v in torch.load('models/teacher_vgg_pre_694.pth').items()}, strict=False)
+    vgg_test.train()
+    vgg_test = nn.DataParallel(vgg_test.cuda(), device_ids=[0,1,2])
 
     mobilenetv2_test = create_mobilenetv2_ssd_lite('train')
     if args.resume:
@@ -66,76 +83,42 @@ def train():
             print('Missing:', missing)
         if unexpected:
             print('Unexpected:', unexpected)
-    mobilenetv2_test.train()
-    mobilenetv2_test = nn.DataParallel(mobilenetv2_test.cuda(), device_ids=[0,1])
+    mobilenetv2_test.eval()
+    mobilenetv2_test = nn.DataParallel(mobilenetv2_test.cuda(), device_ids=[0,2])
     torch.backends.cudnn.benchmark = True
 
     dataset = VOCDetection(root=dataset_root,
                            transform=SSDAugmentation(cfg['min_dim'],
                                                      MEANS))
 
-    optimizer = optim.SGD(mobilenetv2_test.parameters(), lr=args.lr, momentum=0.9,
+    optimizer = optim.SGD(vgg_test.parameters(), lr=args.lr, momentum=0.9,
                           weight_decay=5e-4)
     criterion = MultiBoxLoss(cfg['num_classes'], 0.5, True, 0, True, 3, 0.5,
                              False)
 
     print('Loading the dataset...')
-
-    # epoch_size = len(dataset) // args.batch_size
     print('Training SSD on:', dataset.name)
     print('Using the specified args:')
     print(args)
 
     step_index = 0
-    loss_amount = 0
-    acc = args.start_iter
-
     data_loader = data.DataLoader(dataset, args.batch_size,
                                   num_workers=args.num_workers,
                                   shuffle=True, collate_fn=detection_collate,
                                   pin_memory=True)
 
     # create batch iterator
-    batch_iterator = iter(data_loader)
-    for iteration in range(args.start_iter, cfg['max_iter']):
-        if iteration in (20000, 40000, 80000):
+    for iteration in range(args.start_iter, args.epochs):
+        if iteration in (5, 10, 20):
             step_index += 1
-            adjust_learning_rate(optimizer, 0.2, step_index)
-
-        # load train data
-        try:
-            images, targets = next(batch_iterator)
-        except StopIteration:
-            batch_iterator = iter(data_loader)
-            images, targets = next(batch_iterator)
-        images = images.cuda()
-        # forward
-        t0 = time.time()
-        mbv2_predictions = mobilenetv2_test(images.div(128.))
-        teacher_predictions = teacher_net(images.div(128.))
-        # backprop
-        optimizer.zero_grad()
-        # loss_hint = l2_loss(vgg_predictions[-1], mbv2_predictions[-1])
-        loss_ssd = criterion(mbv2_predictions[:3], teacher_predictions[:2], targets, 0.9)
-        loss = loss_ssd #+ loss_hint * 0.5
-        loss.backward()
-        optimizer.step()
-        t1 = time.time()
-
-        loss_amount += loss.cpu().detach().numpy()
-
-        if iteration % 10 == 0 and not (iteration-args.start_iter) == 0:
-            print('iter ' + repr(iteration) + ' | timer: %.4f sec.' % (t1 - t0))
-            print('Loss: %.6f' %(loss_amount/(iteration-acc)))
-
-        if not (iteration-args.start_iter) == 0 and iteration % 4000 == 0:
+            adjust_learning_rate(optimizer, 0.1, step_index)
+        train_one_epoch(data_loader, vgg_test, mobilenetv2_test, criterion, optimizer, iteration)
+        if not (iteration-args.start_iter) == 0 and iteration % 2 == 0:
             print('Saving state, iter:', iteration)
-            torch.save(mobilenetv2_test.state_dict(), 'models/student_mbv2_' +
+            torch.save(vgg_test.state_dict(), args.save_folder + 'teacher_vgg_' +
                        repr(iteration) + '.pth')
-            loss_amount = 0
-            acc = iteration
-    torch.save(mobilenetv2_test.state_dict(),
-                'models/student_mbv2_final.pth')
+    torch.save(vgg_test.state_dict(),
+                args.save_folder + 'teacher_vgg_final.pth')
 
 if __name__ == '__main__':
     train()

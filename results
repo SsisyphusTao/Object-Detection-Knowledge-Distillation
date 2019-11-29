@@ -44,6 +44,7 @@ AP for train = 0.8388            AP for train = 0.8252
 AP for tvmonitor = 0.6615        AP for tvmonitor = 0.6571
 Mean AP = 0.6756                 Mean AP = 0.6750
 
+vgg from 0.75 from High lr from 1e-4
 AP for aeroplane = 0.6992    
 AP for bicycle = 0.8096      
 AP for bird = 0.6022         
