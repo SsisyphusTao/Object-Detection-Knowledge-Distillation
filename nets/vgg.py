@@ -100,7 +100,7 @@ class vgg_ssd(nn.Module):
         
         self.vgg = nn.ModuleList(backbone)
         # Layer learns to scale the l2 normalized features from conv4_3
-        self.L2Norm = L2Norm(1024, 20)
+        # self.L2Norm = L2Norm(1024, 20)
         self.extras = nn.ModuleList(ssd)
 
         self.loc = nn.ModuleList(head[0])
@@ -124,8 +124,8 @@ class vgg_ssd(nn.Module):
         # apply vgg up to fc7
         for k in range(23, len(self.vgg)):
             x = self.vgg[k](x)
-        s = self.L2Norm(x)
-        sources.append(s)
+        # s = self.L2Norm(x)
+        sources.append(x)
 
         # apply extra layers and cache source layer outputs
         for k, v in enumerate(self.extras):

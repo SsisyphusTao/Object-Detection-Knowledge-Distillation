@@ -24,7 +24,7 @@ parser.add_argument('--start_iter', default=0, type=int,
                     help='Resume training at this iter')
 parser.add_argument('--num_workers', default=8, type=int,
                     help='Number of workers used in dataloading')
-parser.add_argument('--lr', '--learning-rate', default=1e-5, type=float,
+parser.add_argument('--lr', '--learning-rate', default=1e-3, type=float,
                     help='initial learning rate')
 parser.add_argument('--save_folder', default='models/',
                     help='Directory for saving checkpoint models')
@@ -51,40 +51,45 @@ def train_one_epoch(loader, student_net, teacher_net, criterion, optimizer, epoc
         images = images.cuda()
         # forward
         t0 = time.time()
-        teacher_predictions = teacher_net(images.div(128.))
+        # teacher_predictions = teacher_net(images.div(128.))
         student_predictions = student_net(images.div(128.))
         # backprop
         optimizer.zero_grad()
         # loss_hint = l2_loss(vgg_predictions[-1], mbv2_predictions[-1])
-        loss_ssd = criterion(student_predictions[:3], teacher_predictions[:2], targets)
+        loss_ssd = criterion(student_predictions[:3], None, targets)
         loss = loss_ssd #+ loss_hint * 0.5
         loss.backward()
         optimizer.step()
         t1 = time.time()
         loss_amount += loss.cpu().detach().numpy()
         if iteration % 10 == 0 and not iteration == 0:
-            print('Loss: %.6f | iter: %d | timer: %.4f sec. | epoch: %d' %
-                  (loss_amount/iteration, iteration, t1-t0, epoch))
+            print('Loss: %.6f | iter: %3d | timer: %.4f sec. | epoch: %d' %
+                    (loss_amount/iteration, iteration, t1-t0, epoch))
+    print('Loss: %.6f -------------------------------------' % (loss_amount/iteration))        
 
 def train():
     cfg = voc
     l2_loss = nn.MSELoss()
     vgg_test = vgg_module('train')
-    vgg_test.load_state_dict({k.replace('module.',''):v 
-    for k,v in torch.load('models/teacher_vgg_pre_694.pth').items()}, strict=False)
+    missing, unexpected = vgg_test.load_state_dict({k.replace('module.','').replace('loc.','delete').replace('conf.','delete'):v 
+    for k,v in torch.load('models/ssd300_mAP_77.43_v2.pth').items()}, strict=False)
+    if missing:
+        print('Missing:', missing)
+    if unexpected:
+        print('Unexpected:', unexpected)
     vgg_test.train()
     vgg_test = nn.DataParallel(vgg_test.cuda(), device_ids=[0,1,2])
 
-    mobilenetv2_test = create_mobilenetv2_ssd_lite('train')
-    if args.resume:
-        missing, unexpected = mobilenetv2_test.load_state_dict({k.replace('module.',''):v 
-        for k,v in torch.load(args.resume).items()}, strict=False)
-        if missing:
-            print('Missing:', missing)
-        if unexpected:
-            print('Unexpected:', unexpected)
-    mobilenetv2_test.eval()
-    mobilenetv2_test = nn.DataParallel(mobilenetv2_test.cuda(), device_ids=[0,2])
+    # mobilenetv2_test = create_mobilenetv2_ssd_lite('train')
+    # if args.resume:
+    #     missing, unexpected = mobilenetv2_test.load_state_dict({k.replace('module.',''):v 
+    #     for k,v in torch.load(args.resume).items()}, strict=False)
+    #     if missing:
+    #         print('Missing:', missing)
+    #     if unexpected:
+    #         print('Unexpected:', unexpected)
+    # mobilenetv2_test.eval()
+    # mobilenetv2_test = nn.DataParallel(mobilenetv2_test.cuda(), device_ids=[0,2])
     torch.backends.cudnn.benchmark = True
 
     dataset = VOCDetection(root=dataset_root,
@@ -109,11 +114,11 @@ def train():
 
     # create batch iterator
     for iteration in range(args.start_iter, args.epochs):
-        if iteration in (5, 10, 20):
+        if iteration in (80, 160, 320):
             step_index += 1
             adjust_learning_rate(optimizer, 0.1, step_index)
-        train_one_epoch(data_loader, vgg_test, mobilenetv2_test, criterion, optimizer, iteration)
-        if not (iteration-args.start_iter) == 0 and iteration % 2 == 0:
+        train_one_epoch(data_loader, vgg_test, None, criterion, optimizer, iteration)
+        if not (iteration-args.start_iter) == 0 and iteration % 8 == 0:
             print('Saving state, iter:', iteration)
             torch.save(vgg_test.state_dict(), args.save_folder + 'teacher_vgg_' +
                        repr(iteration) + '.pth')
