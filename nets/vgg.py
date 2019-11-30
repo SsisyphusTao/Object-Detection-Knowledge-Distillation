@@ -152,7 +152,7 @@ class vgg_ssd(nn.Module):
                 loc.view(loc.size(0), -1, 4),
                 conf.view(conf.size(0), -1, self.num_classes),
                 self.priors,
-                self.adaptation(adp)
+                adp
             )
 
         return output

@@ -204,8 +204,7 @@ class MobileNetV2(nn.Module):
 
         self.detect = Detect()
         self.priorbox = PriorBox(voc)
-        self.L2Norm = L2Norm(round(32*width_mult), 20)
-        # self.adaptation = nn.Conv2d(round(32*width_mult), 512, 1, 1, 0)
+        self.adaptation = nn.Conv2d(192, 512, 1, 1, 0)
         with torch.no_grad():
             self.priors = self.priorbox.forward()
         self._initialize_weights()
@@ -260,7 +259,7 @@ class MobileNetV2(nn.Module):
                 loc.view(loc.size(0), -1, 4),
                 conf.view(conf.size(0), -1, self.num_classes),
                 self.priors,
-                adp
+                self.adaptation(adp)
             )
         return output
 
