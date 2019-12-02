@@ -18,15 +18,15 @@ parser.add_argument('--batch_size', default=64, type=int,
                     help='Batch size for training')
 parser.add_argument('--resume', default='models/mb2-ssd-lite-mp-0_686.pth', type=str,
                     help='Checkpoint state_dict file to resume training from')
-parser.add_argument('--epochs', default=250, type=int,
+parser.add_argument('--epochs', default=240, type=int,
                     help='the number of training epochs')
 parser.add_argument('--start_iter', default=0, type=int,
                     help='Resume training at this iter')
 parser.add_argument('--num_workers', default=8, type=int,
                     help='Number of workers used in dataloading')
-parser.add_argument('--lr', '--learning-rate', default=1e-4, type=float,
+parser.add_argument('--lr', '--learning-rate', default=1e-3, type=float,
                     help='initial learning rate')
-parser.add_argument('--save_folder', default='models/',
+parser.add_argument('--save_folder', default='models2/',
                     help='Directory for saving checkpoint models')
 args = parser.parse_args()
 torch.set_default_tensor_type('torch.cuda.FloatTensor')
@@ -41,12 +41,12 @@ def train_one_epoch(loader, student_net, teacher_net, criterion, optimizer, epoc
         # forward
         t0 = time.time()
         teacher_predictions = teacher_net(images.div(128.))
-        student_predictions = student_net(images.div(128.))
+        # student_predictions = student_net(images.div(128.))
         # backprop
         optimizer.zero_grad()
-        loss_hint = l2_loss(student_predictions[-1], teacher_predictions[-1])
-        loss_ssd = criterion(student_predictions[:3], teacher_predictions[:2], targets, 0.75)
-        loss = loss_ssd + loss_hint * 0.5
+        # loss_hint = l2_loss(student_predictions[-1], teacher_predictions[-1])
+        loss_ssd = criterion(teacher_predictions[:3], teacher_predictions[:2], targets)
+        loss = loss_ssd #+ loss_hint * 0.5
         loss.backward()
         optimizer.step()
         t1 = time.time()
@@ -59,8 +59,8 @@ def train_one_epoch(loader, student_net, teacher_net, criterion, optimizer, epoc
 def train():
     cfg = voc
     vgg_test = vgg_module('train')
-    missing, unexpected = vgg_test.load_state_dict({k.replace('module.',''):v 
-    for k,v in torch.load('models/teacher_vgg_pre_729.pth').items()}, strict=False)
+    missing, unexpected = vgg_test.load_state_dict({k.replace('module.','').replace('loc','delete').replace('conf','delete'):v 
+    for k,v in torch.load('models/ssd300_mAP_77.43_v2.pth').items()}, strict=False)
     if missing:
         print('Missing:', missing)
     if unexpected:
@@ -68,27 +68,27 @@ def train():
     vgg_test.eval()
     vgg_test = nn.DataParallel(vgg_test.cuda(), device_ids=[0,1,2])
 
-    mobilenetv2_test = create_mobilenetv2_ssd_lite('train')
-    if args.resume:
-        missing, unexpected = mobilenetv2_test.load_state_dict({k.replace('module.',''):v 
-        for k,v in torch.load(args.resume).items()}, strict=False)
-        if missing:
-            print('Missing:', missing)
-        if unexpected:
-            print('Unexpected:', unexpected)
-    mobilenetv2_test.train()
-    mobilenetv2_test = nn.DataParallel(mobilenetv2_test.cuda(), device_ids=[0,1,2])
+    # mobilenetv2_test = create_mobilenetv2_ssd_lite('train')
+    # if args.resume:
+    #     missing, unexpected = mobilenetv2_test.load_state_dict({k.replace('module.',''):v 
+    #     for k,v in torch.load(args.resume).items()}, strict=False)
+    #     if missing:
+    #         print('Missing:', missing)
+    #     if unexpected:
+    #         print('Unexpected:', unexpected)
+    # mobilenetv2_test.train()
+    # mobilenetv2_test = nn.DataParallel(mobilenetv2_test.cuda(), device_ids=[0,1,2,3,4])
     torch.backends.cudnn.benchmark = True
 
     dataset = VOCDetection(root=dataset_root,
                            transform=SSDAugmentation(cfg['min_dim'],
                                                      MEANS))
 
-    optimizer = optim.SGD(mobilenetv2_test.parameters(), lr=args.lr, momentum=0.9,
+    optimizer = optim.SGD(vgg_test.parameters(), lr=args.lr, momentum=0.9,
                           weight_decay=5e-4)
     for param_group in optimizer.param_groups:
         param_group['initial_lr'] = args.lr
-    adjust_learning_rate = optim.lr_scheduler.MultiStepLR(optimizer, [50, 100], 0.1, args.start_iter)
+    adjust_learning_rate = optim.lr_scheduler.MultiStepLR(optimizer, [155, 195], 0.1, args.start_iter)
     criterion = MultiBoxLoss(cfg['num_classes'], 0.5, True, 0, True, 3, 0.5,
                              False)
 
@@ -105,14 +105,14 @@ def train():
 
     # create batch iterator
     for iteration in range(args.start_iter + 1, args.epochs):
-        train_one_epoch(data_loader, mobilenetv2_test, vgg_test, criterion, optimizer, iteration)
+        train_one_epoch(data_loader, None, vgg_test, criterion, optimizer, iteration)
         adjust_learning_rate.step()
         if not (iteration-args.start_iter) == 0 and iteration % 8 == 0:
             print('Saving state, iter:', iteration)
-            torch.save(mobilenetv2_test.state_dict(), args.save_folder + 'student_mbv2_' +
+            torch.save(vgg_test.state_dict(), args.save_folder + 'teacher_vgg_norm_' +
                        repr(iteration) + '.pth')
-    torch.save(mobilenetv2_test.state_dict(),
-                args.save_folder + 'student_mbv2_final.pth')
+    torch.save(vgg_test.state_dict(),
+                args.save_folder + 'teacher_vgg_norm_final.pth')
 
 if __name__ == '__main__':
     train()

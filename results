@@ -1,68 +1,22 @@
-Baseline                         Pre 680               
-AP for aeroplane = 0.6990        AP for aeroplane = 0.7072               AP for aeroplane = 0.7052          
-AP for bicycle = 0.7788          AP for bicycle = 0.7812               AP for bicycle = 0.8069            
-AP for bird = 0.6380             AP for bird = 0.6450               AP for bird = 0.5764               
-AP for boat = 0.5547             AP for boat = 0.5511               AP for boat = 0.5769               
-AP for bottle = 0.3573           AP for bottle = 0.3479               AP for bottle = 0.3831             
-AP for bus = 0.8000              AP for bus = 0.8077               AP for bus = 0.7864                
-AP for car = 0.7413              AP for car = 0.7411               AP for car = 0.7411                
-AP for cat = 0.8244              AP for cat = 0.8257               AP for cat = 0.8005                
-AP for chair = 0.5371            AP for chair = 0.5420               AP for chair = 0.5180              
-AP for cow = 0.6198              AP for cow = 0.6328               AP for cow = 0.6743                
-AP for diningtable = 0.7301      AP for diningtable = 0.7196               AP for diningtable = 0.7064          
-AP for dog = 0.7846              AP for dog = 0.7866               AP for dog = 0.7354                
-AP for horse = 0.8238            AP for horse = 0.8301               AP for horse = 0.8131              
-AP for motorbike = 0.8148        AP for motorbike = 0.8151               AP for motorbike = 0.8062          
-AP for person = 0.7163           AP for person = 0.7139               AP for person = 0.6984             
-AP for pottedplant = 0.4199      AP for pottedplant = 0.4333               AP for pottedplant = 0.3866      
-AP for sheep = 0.6267            AP for sheep = 0.6289               AP for sheep = 0.6455              
-AP for sofa = 0.7862             AP for sofa = 0.7825               AP for sofa = 0.7552               
-AP for train = 0.8312            AP for train = 0.8339               AP for train = 0.8315              
-AP for tvmonitor = 0.6534        AP for tvmonitor = 0.6586               AP for tvmonitor = 0.6603          
-Mean AP = 0.6869                 Mean AP = 0.6892               Mean AP = 0.6804                   
-
-High lr                          Low lr
-AP for aeroplane = 0.6850        AP for aeroplane = 0.7008
-AP for bicycle = 0.7861          AP for bicycle = 0.7826
-AP for bird = 0.5993             AP for bird = 0.5730
-AP for boat = 0.5842             AP for boat = 0.5737
-AP for bottle = 0.3845           AP for bottle = 0.3884
-AP for bus = 0.7676              AP for bus = 0.7616
-AP for car = 0.7431              AP for car = 0.7457
-AP for cat = 0.7791              AP for cat = 0.7742
-AP for chair = 0.4987            AP for chair = 0.5056
-AP for cow = 0.6654              AP for cow = 0.6699
-AP for diningtable = 0.7308      AP for diningtable = 0.7094
-AP for dog = 0.7361              AP for dog = 0.7352
-AP for horse = 0.7876            AP for horse = 0.8240
-AP for motorbike = 0.8002        AP for motorbike = 0.7995
-AP for person = 0.7006           AP for person = 0.6965
-AP for pottedplant = 0.3808      AP for pottedplant = 0.3878
-AP for sheep = 0.6525            AP for sheep = 0.6453
-AP for sofa = 0.7301             AP for sofa = 0.7451
-AP for train = 0.8388            AP for train = 0.8252
-AP for tvmonitor = 0.6615        AP for tvmonitor = 0.6571
-Mean AP = 0.6756                 Mean AP = 0.6750
-
-vgg from 0.75 from High lr from 1e-4
-AP for aeroplane = 0.6992        AP for aeroplane = 0.7268
-AP for bicycle = 0.8096          AP for bicycle = 0.8233
-AP for bird = 0.6022             AP for bird = 0.6985
-AP for boat = 0.6156             AP for boat = 0.6243
-AP for bottle = 0.4076           AP for bottle = 0.4239
-AP for bus = 0.7896              AP for bus = 0.8401
-AP for car = 0.7540              AP for car = 0.7746
-AP for cat = 0.8236              AP for cat = 0.8742
-AP for chair = 0.5236            AP for chair = 0.5733
-AP for cow = 0.6961              AP for cow = 0.7458
-AP for diningtable = 0.7347      AP for diningtable = 0.7431
-AP for dog = 0.7662              AP for dog = 0.8471
-AP for horse = 0.8134            AP for horse = 0.8585
-AP for motorbike = 0.7981        AP for motorbike = 0.8221
-AP for person = 0.7091           AP for person = 0.7206
-AP for pottedplant = 0.4078      AP for pottedplant = 0.4640
-AP for sheep = 0.6576            AP for sheep = 0.6878
-AP for sofa = 0.7455             AP for sofa = 0.7702
-AP for train = 0.8433            AP for train = 0.8550
-AP for tvmonitor = 0.6720        AP for tvmonitor = 0.7149
-Mean AP = 0.6934                 Mean AP = 0.7294
+Baseline                         teacher vgg             
+AP for aeroplane = 0.6990        AP for aeroplane = 0.7268     
+AP for bicycle = 0.7788          AP for bicycle = 0.8233       
+AP for bird = 0.6380             AP for bird = 0.6985          
+AP for boat = 0.5547             AP for boat = 0.6243          
+AP for bottle = 0.3573           AP for bottle = 0.4239        
+AP for bus = 0.8000              AP for bus = 0.8401           
+AP for car = 0.7413              AP for car = 0.7746           
+AP for cat = 0.8244              AP for cat = 0.8742           
+AP for chair = 0.5371            AP for chair = 0.5733         
+AP for cow = 0.6198              AP for cow = 0.7458           
+AP for diningtable = 0.7301      AP for diningtable = 0.7431   
+AP for dog = 0.7846              AP for dog = 0.8471           
+AP for horse = 0.8238            AP for horse = 0.8585         
+AP for motorbike = 0.8148        AP for motorbike = 0.8221     
+AP for person = 0.7163           AP for person = 0.7206        
+AP for pottedplant = 0.4199      AP for pottedplant = 0.4640   
+AP for sheep = 0.6267            AP for sheep = 0.6878         
+AP for sofa = 0.7862             AP for sofa = 0.7702          
+AP for train = 0.8312            AP for train = 0.8550         
+AP for tvmonitor = 0.6534        AP for tvmonitor = 0.7149     
+Mean AP = 0.6869                 Mean AP = 0.7294              
