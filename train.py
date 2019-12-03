@@ -34,19 +34,25 @@ l2_loss = nn.MSELoss()
 
 def train_one_epoch(loader, student_net, teacher_net, criterion, optimizer, epoch):
     loss_amount = 0
+    if epoch < 10:
+        p = 0.9
+    elif 10 <= epoch <= 155:
+        p = 0.9 - (epoch - 10) / 145 * 0.4
+    else:
+        p = 0.5
     # load train data
     for iteration, batch in enumerate(loader):
         images, targets = batch
         images = images.cuda()
         # forward
         t0 = time.time()
-        teacher_predictions = teacher_net(images.div(128.))
-        # student_predictions = student_net(images.div(128.))
+        teacher_predictions = teacher_net(images)
+        student_predictions = student_net(images.div(128.))
         # backprop
         optimizer.zero_grad()
-        # loss_hint = l2_loss(student_predictions[-1], teacher_predictions[-1])
-        loss_ssd = criterion(teacher_predictions[:3], teacher_predictions[:2], targets)
-        loss = loss_ssd #+ loss_hint * 0.5
+        loss_hint = l2_loss(student_predictions[-1], teacher_predictions[-1])
+        loss_ssd = criterion(student_predictions[:3], teacher_predictions[:2], targets, p)
+        loss = loss_ssd + loss_hint * 0.5
         loss.backward()
         optimizer.step()
         t1 = time.time()
@@ -59,32 +65,32 @@ def train_one_epoch(loader, student_net, teacher_net, criterion, optimizer, epoc
 def train():
     cfg = voc
     vgg_test = vgg_module('train')
-    missing, unexpected = vgg_test.load_state_dict({k.replace('module.','').replace('loc','delete').replace('conf','delete'):v 
-    for k,v in torch.load('models/ssd300_mAP_77.43_v2.pth').items()}, strict=False)
+    missing, unexpected = vgg_test.load_state_dict({k.replace('module.',''):v 
+    for k,v in torch.load('models/teacher_vgg_wo_7365.pth').items()}, strict=False)
     if missing:
         print('Missing:', missing)
     if unexpected:
         print('Unexpected:', unexpected)
     vgg_test.eval()
-    vgg_test = nn.DataParallel(vgg_test.cuda(), device_ids=[0,1,2])
+    vgg_test = nn.DataParallel(vgg_test.cuda(), device_ids=[0,1,2,3,4,5])
 
-    # mobilenetv2_test = create_mobilenetv2_ssd_lite('train')
-    # if args.resume:
-    #     missing, unexpected = mobilenetv2_test.load_state_dict({k.replace('module.',''):v 
-    #     for k,v in torch.load(args.resume).items()}, strict=False)
-    #     if missing:
-    #         print('Missing:', missing)
-    #     if unexpected:
-    #         print('Unexpected:', unexpected)
-    # mobilenetv2_test.train()
-    # mobilenetv2_test = nn.DataParallel(mobilenetv2_test.cuda(), device_ids=[0,1,2,3,4])
+    mobilenetv2_test = create_mobilenetv2_ssd_lite('train')
+    if args.resume:
+        missing, unexpected = mobilenetv2_test.load_state_dict({k.replace('module.',''):v 
+        for k,v in torch.load(args.resume).items()}, strict=False)
+        if missing:
+            print('Missing:', missing)
+        if unexpected:
+            print('Unexpected:', unexpected)
+    mobilenetv2_test.train()
+    mobilenetv2_test = nn.DataParallel(mobilenetv2_test.cuda(), device_ids=[0,1,2,3,4,5])
     torch.backends.cudnn.benchmark = True
 
     dataset = VOCDetection(root=dataset_root,
                            transform=SSDAugmentation(cfg['min_dim'],
                                                      MEANS))
 
-    optimizer = optim.SGD(vgg_test.parameters(), lr=args.lr, momentum=0.9,
+    optimizer = optim.SGD(mobilenetv2_test.parameters(), lr=args.lr, momentum=0.9,
                           weight_decay=5e-4)
     for param_group in optimizer.param_groups:
         param_group['initial_lr'] = args.lr
@@ -105,13 +111,13 @@ def train():
 
     # create batch iterator
     for iteration in range(args.start_iter + 1, args.epochs):
-        train_one_epoch(data_loader, None, vgg_test, criterion, optimizer, iteration)
+        train_one_epoch(data_loader, mobilenetv2_test, vgg_test, criterion, optimizer, iteration)
         adjust_learning_rate.step()
         if not (iteration-args.start_iter) == 0 and iteration % 8 == 0:
             print('Saving state, iter:', iteration)
-            torch.save(vgg_test.state_dict(), args.save_folder + 'teacher_vgg_norm_' +
+            torch.save(mobilenetv2_test.state_dict(), args.save_folder + 'teacher_vgg_norm_' +
                        repr(iteration) + '.pth')
-    torch.save(vgg_test.state_dict(),
+    torch.save(mobilenetv2_test.state_dict(),
                 args.save_folder + 'teacher_vgg_norm_final.pth')
 
 if __name__ == '__main__':
