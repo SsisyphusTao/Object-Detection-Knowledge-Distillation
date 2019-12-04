@@ -16,7 +16,7 @@ parser = argparse.ArgumentParser(
 train_set = parser.add_mutually_exclusive_group()
 parser.add_argument('--batch_size', default=64, type=int,
                     help='Batch size for training')
-parser.add_argument('--resume', default='models/mb2-ssd-lite-mp-0_686.pth', type=str,
+parser.add_argument('--resume', default=None, type=str,
                     help='Checkpoint state_dict file to resume training from')
 parser.add_argument('--epochs', default=240, type=int,
                     help='the number of training epochs')
@@ -26,7 +26,7 @@ parser.add_argument('--num_workers', default=8, type=int,
                     help='Number of workers used in dataloading')
 parser.add_argument('--lr', '--learning-rate', default=1e-3, type=float,
                     help='initial learning rate')
-parser.add_argument('--save_folder', default='models2/',
+parser.add_argument('--save_folder', default='checkpoints/',
                     help='Directory for saving checkpoint models')
 args = parser.parse_args()
 torch.set_default_tensor_type('torch.cuda.FloatTensor')
@@ -34,29 +34,23 @@ l2_loss = nn.MSELoss()
 
 def train_one_epoch(loader, student_net, teacher_net, criterion, optimizer, epoch):
     loss_amount = 0
-    if epoch < 10:
-        p = 0.9
-    elif 10 <= epoch <= 155:
-        p = 0.9 - (epoch - 10) / 145 * 0.4
-    else:
-        p = 0.5
     # load train data
     for iteration, batch in enumerate(loader):
         images, targets = batch
         images = images.cuda()
         # forward
         t0 = time.time()
-        teacher_predictions = teacher_net(images)
+        teacher_predictions = teacher_net(images.div(128.))
         student_predictions = student_net(images.div(128.))
         # backprop
         optimizer.zero_grad()
         loss_hint = l2_loss(student_predictions[-1], teacher_predictions[-1])
-        loss_ssd = criterion(student_predictions[:3], teacher_predictions[:2], targets, p)
+        loss_ssd, loss_bare = criterion(student_predictions[:3], teacher_predictions[:2], targets, max(1.-epoch/220, 0.))
         loss = loss_ssd + loss_hint * 0.5
         loss.backward()
         optimizer.step()
         t1 = time.time()
-        loss_amount += loss.cpu().detach().numpy()
+        loss_amount += loss_bare.cpu().detach().numpy()
         if iteration % 10 == 0 and not iteration == 0:
             print('Loss: %.6f | iter: %03d | timer: %.4f sec. | epoch: %d' %
                     (loss_amount/iteration, iteration, t1-t0, epoch))
@@ -66,13 +60,13 @@ def train():
     cfg = voc
     vgg_test = vgg_module('train')
     missing, unexpected = vgg_test.load_state_dict({k.replace('module.',''):v 
-    for k,v in torch.load('models/teacher_vgg_wo_7365.pth').items()}, strict=False)
+    for k,v in torch.load('../tempmodels/teacher_vgg_w_7313.pth').items()}, strict=False)
     if missing:
         print('Missing:', missing)
     if unexpected:
         print('Unexpected:', unexpected)
     vgg_test.eval()
-    vgg_test = nn.DataParallel(vgg_test.cuda(), device_ids=[0,1,2,3,4,5])
+    vgg_test = nn.DataParallel(vgg_test.cuda(), device_ids=[0,1,2,3])
 
     mobilenetv2_test = create_mobilenetv2_ssd_lite('train')
     if args.resume:
@@ -83,7 +77,7 @@ def train():
         if unexpected:
             print('Unexpected:', unexpected)
     mobilenetv2_test.train()
-    mobilenetv2_test = nn.DataParallel(mobilenetv2_test.cuda(), device_ids=[0,1,2,3,4,5])
+    mobilenetv2_test = nn.DataParallel(mobilenetv2_test.cuda(), device_ids=[0,1,2,3])
     torch.backends.cudnn.benchmark = True
 
     dataset = VOCDetection(root=dataset_root,
