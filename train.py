@@ -16,7 +16,7 @@ parser = argparse.ArgumentParser(
 train_set = parser.add_mutually_exclusive_group()
 parser.add_argument('--batch_size', default=64, type=int,
                     help='Batch size for training')
-parser.add_argument('--resume', default=None, type=str,
+parser.add_argument('--resume', default='models/mb2-ssd-lite-mp-0_686.pth', type=str,
                     help='Checkpoint state_dict file to resume training from')
 parser.add_argument('--epochs', default=240, type=int,
                     help='the number of training epochs')
@@ -24,7 +24,7 @@ parser.add_argument('--start_iter', default=0, type=int,
                     help='Resume training at this iter')
 parser.add_argument('--num_workers', default=8, type=int,
                     help='Number of workers used in dataloading')
-parser.add_argument('--lr', '--learning-rate', default=1e-3, type=float,
+parser.add_argument('--lr', '--learning-rate', default=1e-5, type=float,
                     help='initial learning rate')
 parser.add_argument('--save_folder', default='checkpoints/',
                     help='Directory for saving checkpoint models')
@@ -40,13 +40,13 @@ def train_one_epoch(loader, student_net, teacher_net, criterion, optimizer, epoc
         images = images.cuda()
         # forward
         t0 = time.time()
-        teacher_predictions = teacher_net(images.div(128.))
+        teacher_predictions = teacher_net(images)
         student_predictions = student_net(images.div(128.))
         # backprop
         optimizer.zero_grad()
-        loss_hint = l2_loss(student_predictions[-1], teacher_predictions[-1])
-        loss_ssd, loss_bare = criterion(student_predictions[:3], teacher_predictions[:2], targets, max(1.-epoch/220, 0.))
-        loss = loss_ssd + loss_hint * 0.5
+        # loss_hint = l2_loss(student_predictions[-1], teacher_predictions[-1])
+        loss_ssd, loss_bare = criterion(student_predictions[:3], teacher_predictions[:2], targets, 0.5)
+        loss = loss_ssd #+ loss_hint * 0.5
         loss.backward()
         optimizer.step()
         t1 = time.time()
@@ -55,12 +55,13 @@ def train_one_epoch(loader, student_net, teacher_net, criterion, optimizer, epoc
             print('Loss: %.6f | iter: %03d | timer: %.4f sec. | epoch: %d' %
                     (loss_amount/iteration, iteration, t1-t0, epoch))
     print('Loss: %.6f --------------------------------------------' % (loss_amount/iteration))
+    return '_%d' % (loss_amount/iteration*1000)
 
 def train():
     cfg = voc
     vgg_test = vgg_module('train')
     missing, unexpected = vgg_test.load_state_dict({k.replace('module.',''):v 
-    for k,v in torch.load('../tempmodels/teacher_vgg_w_7313.pth').items()}, strict=False)
+    for k,v in torch.load('../tempmodels/teacher_vgg_wo_7365.pth').items()}, strict=False)
     if missing:
         print('Missing:', missing)
     if unexpected:
@@ -105,14 +106,14 @@ def train():
 
     # create batch iterator
     for iteration in range(args.start_iter + 1, args.epochs):
-        train_one_epoch(data_loader, mobilenetv2_test, vgg_test, criterion, optimizer, iteration)
+        loss = train_one_epoch(data_loader, mobilenetv2_test, vgg_test, criterion, optimizer, iteration)
         adjust_learning_rate.step()
         if not (iteration-args.start_iter) == 0 and iteration % 8 == 0:
             print('Saving state, iter:', iteration)
-            torch.save(mobilenetv2_test.state_dict(), args.save_folder + 'teacher_vgg_norm_' +
-                       repr(iteration) + '.pth')
+            torch.save(mobilenetv2_test.state_dict(), args.save_folder + 'student_mbv2_' +
+                       repr(iteration) + loss + '.pth')
     torch.save(mobilenetv2_test.state_dict(),
-                args.save_folder + 'teacher_vgg_norm_final.pth')
+                args.save_folder + 'student_mbv2_end' + loss + '.pth')
 
 if __name__ == '__main__':
     train()
