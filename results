@@ -21,25 +21,25 @@ AP for train = 0.8312            AP for train = 0.8544
 AP for tvmonitor = 0.6534        AP for tvmonitor = 0.7181
 Mean AP = 0.6869                 Mean AP = 0.7313
 
-without divided by 128
-AP for aeroplane = 0.7568
-AP for bicycle = 0.8260
-AP for bird = 0.7047
-AP for boat = 0.6456
-AP for bottle = 0.4451
-AP for bus = 0.8554
-AP for car = 0.7728
-AP for cat = 0.8763
-AP for chair = 0.5931
-AP for cow = 0.7341
-AP for diningtable = 0.7535
-AP for dog = 0.8391
-AP for horse = 0.8479
-AP for motorbike = 0.8404
-AP for person = 0.7327
-AP for pottedplant = 0.4592
-AP for sheep = 0.7025
-AP for sofa = 0.7810
-AP for train = 0.8567
-AP for tvmonitor = 0.7067
-Mean AP = 0.7365
+without divided by 128                          
+AP for aeroplane = 0.7568        AP for aeroplane = 0.7034  
+AP for bicycle = 0.8260          AP for bicycle = 0.7926    
+AP for bird = 0.7047             AP for bird = 0.6410       
+AP for boat = 0.6456             AP for boat = 0.5641       
+AP for bottle = 0.4451           AP for bottle = 0.3545     
+AP for bus = 0.8554              AP for bus = 0.7953        
+AP for car = 0.7728              AP for car = 0.7400        
+AP for cat = 0.8763              AP for cat = 0.8204        
+AP for chair = 0.5931            AP for chair = 0.5358      
+AP for cow = 0.7341              AP for cow = 0.6571        
+AP for diningtable = 0.7535      AP for diningtable = 0.7221
+AP for dog = 0.8391              AP for dog = 0.7868        
+AP for horse = 0.8479            AP for horse = 0.8368      
+AP for motorbike = 0.8404        AP for motorbike = 0.8194  
+AP for person = 0.7327           AP for person = 0.7121     
+AP for pottedplant = 0.4592      AP for pottedplant = 0.4398
+AP for sheep = 0.7025            AP for sheep = 0.6231      
+AP for sofa = 0.7810             AP for sofa = 0.7963       
+AP for train = 0.8567            AP for train = 0.8295      
+AP for tvmonitor = 0.7067        AP for tvmonitor = 0.6435  
+Mean AP = 0.7365                 Mean AP = 0.6907         
