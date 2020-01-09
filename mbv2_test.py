@@ -1,22 +1,22 @@
 import torch
-from nets import mobilenetv2_module
+from nets import create_mobilenetv2_ssd_lite
 import cv2 as cv
 import numpy as np
 import time
 from penguin import getsingleimg
 from data.voc0712 import VOC_CLASSES
 
-x, show = getsingleimg()
-mobilenetv2_test = mobilenetv2_module('test')
-
-# for n, block in enumerate(mobilenetv2_test.features):
-#     # if n == 8 or n ==16:
-#         print(n)
-#         print(block)
-#         print('---------------------------------')
-# mobilenetv2_test.load_weights('./models/student_mbv2_2000.pth')
-mobilenetv2_test.load_state_dict({k.replace('module.',''):v 
-for k,v in torch.load('./models/student_mbv2_61.31.pth').items()})
+mobilenetv2_test = create_mobilenetv2_ssd_lite('train')
+# mobilenetv2_test.load_state_dict()
+# {k.replace('module.',''):v for k,v in torch.load('../tempmodels/teacher_vgg_w_7313.pth').items()}
+missing, unexpected = mobilenetv2_test.load_state_dict({k.replace('module.',''):v 
+for k,v in torch.load('models/mb2-ssd-lite-mp-0_686.pth').items()}, strict=False)
+if missing:
+    print('Missing:', missing)
+if unexpected:
+    print('Unexpected:', unexpected)
+        
+"""
 mobilenetv2_test.eval()
 mobilenetv2_test = mobilenetv2_test.cuda()
 torch.backends.cudnn.benchmark = True
@@ -45,3 +45,4 @@ for j in range(1, r.size(1)):
         continue
 cv.imshow('sdf', show)
 cv.waitKey()
+"""

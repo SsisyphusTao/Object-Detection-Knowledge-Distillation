@@ -163,6 +163,7 @@ class MultiBoxLoss(nn.Module):
         conf_p = F.softmax(conf_p/self.T, dim=1)
         confT_p = F.softmax(confT_p/self.T, dim=1)
         loss_soft = weighted_KL_div(conf_p, confT_p, self.pos_w, self.neg_w)
+        loss_hint = F.mse_loss(conf_data, confT)
 
         # Sum of losses: L(x,c,l,g) = (Lconf(x, c) + αLloc(x,l,g)) / N
         
@@ -172,4 +173,4 @@ class MultiBoxLoss(nn.Module):
         loss_cls = self.u * loss_c + (1 - self.u) * loss_soft
         loss_ssd = (loss_cls + self.lmda * loss_reg) / N
 
-        return loss_ssd, (loss_c+loss_l)/N
+        return loss_ssd + loss_hint*0.5, (loss_c+loss_l)/N

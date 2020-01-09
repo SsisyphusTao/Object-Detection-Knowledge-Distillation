@@ -14,15 +14,15 @@ dataset_root = '/home/tao/data/VOCdevkit/'
 parser = argparse.ArgumentParser(
     description='VGG Distillation Mobilenetv2')
 train_set = parser.add_mutually_exclusive_group()
-parser.add_argument('--batch_size', default=96, type=int,
+parser.add_argument('--batch_size', default=64, type=int,
                     help='Batch size for training')
-parser.add_argument('--resume', default='models/mb2-ssd-lite-mp-0_686.pth', type=str,
+parser.add_argument('--resume', default='temp_models/student_mbv2_end_2364.pth', type=str,
                     help='Checkpoint state_dict file to resume training from')
 parser.add_argument('--epochs', default=200, type=int,
                     help='the number of training epochs')
 parser.add_argument('--start_iter', default=0, type=int,
                     help='Resume training at this iter')
-parser.add_argument('--num_workers', default=12, type=int,
+parser.add_argument('--num_workers', default=16, type=int,
                     help='Number of workers used in dataloading')
 parser.add_argument('--lr', '--learning-rate', default=1e-2, type=float,
                     help='initial learning rate')
@@ -30,7 +30,6 @@ parser.add_argument('--save_folder', default='checkpoints/',
                     help='Directory for saving checkpoint models')
 args = parser.parse_args()
 torch.set_default_tensor_type('torch.cuda.FloatTensor')
-l2_loss = nn.MSELoss()
 
 def train_one_epoch(loader, student_net, teacher_net, criterion, optimizer, epoch):
     loss_amount = 0
@@ -44,9 +43,7 @@ def train_one_epoch(loader, student_net, teacher_net, criterion, optimizer, epoc
         student_predictions = student_net(images.div(128.))
         # backprop
         optimizer.zero_grad()
-        loss_hint = l2_loss(student_predictions[-1], teacher_predictions[-1])
-        loss_ssd, loss_bare = criterion(student_predictions[:3], teacher_predictions[:2], targets, 0.5)
-        loss = loss_ssd + loss_hint * 0.5
+        loss, loss_bare = criterion(student_predictions[:3], teacher_predictions[:2], targets, 0.5)
         loss.backward()
         optimizer.step()
         t1 = time.time()
@@ -67,7 +64,7 @@ def train():
     if unexpected:
         print('Unexpected:', unexpected)
     vgg_test.eval()
-    vgg_test = nn.DataParallel(vgg_test.cuda(), device_ids=[0,1,2,3,4,5])
+    vgg_test = nn.DataParallel(vgg_test.cuda(), device_ids=[0,1,2,3])
 
     mobilenetv2_test = create_mobilenetv2_ssd_lite('train')
     if args.resume:
@@ -78,7 +75,7 @@ def train():
         if unexpected:
             print('Unexpected:', unexpected)
     mobilenetv2_test.train()
-    mobilenetv2_test = nn.DataParallel(mobilenetv2_test.cuda(), device_ids=[0,1,2,3,4,5])
+    mobilenetv2_test = nn.DataParallel(mobilenetv2_test.cuda(), device_ids=[0,1,2,3])
     torch.backends.cudnn.benchmark = True
 
     dataset = VOCDetection(root=dataset_root,
@@ -89,8 +86,8 @@ def train():
                           weight_decay=5e-4)
     for param_group in optimizer.param_groups:
         param_group['initial_lr'] = args.lr
-    # adjust_learning_rate = optim.lr_scheduler.MultiStepLR(optimizer, [155, 195], 0.1, args.start_iter)
-    adjust_learning_rate = optim.lr_scheduler.CosineAnnealingLR(optimizer, args.epochs, args.start_iter)
+    adjust_learning_rate = optim.lr_scheduler.MultiStepLR(optimizer, [120, 180], 0.1, args.start_iter)
+    # adjust_learning_rate = optim.lr_scheduler.CosineAnnealingLR(optimizer, args.epochs, args.start_iter)
     criterion = MultiBoxLoss(cfg['num_classes'], 0.5, True, 0, True, 3, 0.5,
                              False)
 
@@ -109,7 +106,7 @@ def train():
     for iteration in range(args.start_iter + 1, args.epochs):
         loss = train_one_epoch(data_loader, mobilenetv2_test, vgg_test, criterion, optimizer, iteration)
         adjust_learning_rate.step()
-        if not (iteration-args.start_iter) == 0 and iteration % 10 == 0:
+        if (not (iteration-args.start_iter) == 0 and iteration % 10 == 0) or int(loss[1:])<2300:
             print('Saving state, iter:', iteration)
             torch.save(mobilenetv2_test.state_dict(), args.save_folder + 'student_mbv2_' +
                        repr(iteration) + loss + '.pth')
