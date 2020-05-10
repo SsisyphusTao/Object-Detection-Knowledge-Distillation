@@ -4,7 +4,7 @@ This is an implementation of Chen, G. et al. (2017) [‘Learning efficient objec
 
 ## Overall Structure
 
-![structure](https://raw.githubusercontent.com/SsisyphusTao/SSD-Knowledge-Distillation/mbv2-lite/structure.png)
+![structure](structure.png)
 
 ## Introduction
 
