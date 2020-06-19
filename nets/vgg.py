@@ -176,5 +176,5 @@ class vgg_ssd(nn.Module):
                 m.weight.data.normal_(0, 0.01)
                 m.bias.data.zero_()
 
-def vgg_module(mode):
+def create_vgg(mode):
     return vgg_ssd(vgg_, ssd_, head_, mode)

@@ -12,8 +12,7 @@ from torch.autograd import Variable
 from data import VOC_ROOT, VOCAnnotationTransform, VOCDetection, BaseTransform
 from data import VOC_CLASSES as labelmap
 import torch.utils.data as data
-from nets import vgg_module, mobilenetv2_module
-from nets.mobilenet_v2_ssd_lite import create_mobilenetv2_ssd_lite
+from nets import create_vgg, create_mobilenetv2_ssd_lite
 from tqdm import trange
 
 import sys
@@ -425,7 +424,7 @@ if __name__ == '__main__':
     net = create_mobilenetv2_ssd_lite('test')         # initialize SSD
     # net.load_state_dict(torch.load(args.trained_model))
     net.load_state_dict({k.replace('module.',''):v 
-                        for k,v in torch.load(args.trained_model).items()})
+                        for k,v in torch.load(args.trained_model).items()}, strict=False)
     net.eval()
     print('Finished loading model!')
     # load data

@@ -1,8 +1,8 @@
 import torch
 import cv2 as cv
 import numpy as np
-def getsingleimg(mean, std=1.0):
-    img = cv.imread('/home/tao/Pictures/juvenile-penguin.jpg')
+def getsingleimg(path, mean=[127., 127., 127.], std=1.0):
+    img = cv.imread(path)
     img = show = cv.resize(img, (300,300))
     img = cv.cvtColor(img, cv.COLOR_BGR2RGB)
 

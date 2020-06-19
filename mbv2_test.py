@@ -6,23 +6,19 @@ import time
 from penguin import getsingleimg
 from data.voc0712 import VOC_CLASSES
 
-mobilenetv2_test = create_mobilenetv2_ssd_lite('train')
-# mobilenetv2_test.load_state_dict()
-# {k.replace('module.',''):v for k,v in torch.load('../tempmodels/teacher_vgg_w_7313.pth').items()}
+mobilenetv2_test = create_mobilenetv2_ssd_lite('test')
 missing, unexpected = mobilenetv2_test.load_state_dict({k.replace('module.',''):v 
 for k,v in torch.load('models/mb2-ssd-lite-mp-0_686.pth').items()}, strict=False)
 if missing:
     print('Missing:', missing)
 if unexpected:
     print('Unexpected:', unexpected)
-        
-"""
+
 mobilenetv2_test.eval()
 mobilenetv2_test = mobilenetv2_test.cuda()
-torch.backends.cudnn.benchmark = True
-a = time.time()
+
+x, show = getsingleimg('sheep-on-green-grass.jpg')
 r = mobilenetv2_test(x).data#.numpy()[0]
-print(time.time()-a)
 for j in range(1, r.size(1)):
     dets = r[0, j, :]
     mask = dets[:, 0].gt(0.).expand(5, dets.size(0)).t()
@@ -36,13 +32,10 @@ for j in range(1, r.size(1)):
     #     continue
     boxes *= 300
     boxes = boxes.astype(int)
-    # _, show = getsingleimg()
     try:
         cv.rectangle(show, (boxes[0],boxes[1]), 
         (boxes[2], 
         boxes[3]), 255)
     except:
         continue
-cv.imshow('sdf', show)
-cv.waitKey()
-"""
+cv.imwrite('output.jpg', show)

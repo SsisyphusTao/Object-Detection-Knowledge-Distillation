@@ -2,3 +2,5 @@
 *.pkl
 *.pth
 *.pyc
+*__pycache__
+ssd300_120000

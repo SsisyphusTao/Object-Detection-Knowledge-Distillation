@@ -102,7 +102,11 @@ class MultiBoxLoss(nn.Module):
         num_classes = self.num_classes
         self.u = u
         #predicions of teachers
-        locT, confT = predT
+        if not predT == None:
+            locT, confT = predT
+            distillation = True
+        else:
+            distillation = False
 
         # match priors (default boxes) and ground truth boxes
         loc_t = torch.Tensor(num, num_priors, 4) # grond truch
@@ -131,9 +135,10 @@ class MultiBoxLoss(nn.Module):
         loss_l = F.smooth_l1_loss(loc_p, loc_t, reduction='sum')
             
         #Regression with Teacher Bounds
-        locT_p = locT[pos_idx].view(-1, 4) #same, select out teacher's boxes should be positive(the location prediciton of teacher)
-        loss_br = bounded_regression_loss(loc_p, locT_p, loc_t, self.reg_m)
-        loss_reg = loss_l + loss_br
+        if distillation:
+            locT_p = locT[pos_idx].view(-1, 4) #same, select out teacher's boxes should be positive(the location prediciton of teacher)
+            loss_br = bounded_regression_loss(loc_p, locT_p, loc_t, self.reg_m)
+            loss_reg = loss_l + loss_br
 
         # Compute max conf across batch for hard negative mining
         batch_conf = conf_data.view(-1, self.num_classes)
@@ -158,19 +163,22 @@ class MultiBoxLoss(nn.Module):
         # modified original code here: add softmax before cross_entropy(!!!)
         loss_c = F.cross_entropy(conf_p, targets_weighted, reduction='sum')
 
-        #soft loss from teacher
-        confT_p = confT[(pos_idx+neg_idx).gt(0)].view(-1, self.num_classes)
-        conf_p = F.softmax(conf_p/self.T, dim=1)
-        confT_p = F.softmax(confT_p/self.T, dim=1)
-        loss_soft = weighted_KL_div(conf_p, confT_p, self.pos_w, self.neg_w)
-        loss_hint = F.mse_loss(conf_data, confT)
-
-        # Sum of losses: L(x,c,l,g) = (Lconf(x, c) + αLloc(x,l,g)) / N
-        
         N = num_pos.data.sum()
-        # loss_l /= N
-        # loss_c /= N
-        loss_cls = self.u * loss_c + (1 - self.u) * loss_soft
-        loss_ssd = (loss_cls + self.lmda * loss_reg) / N
+        #soft loss from teacher
+        if distillation:
+            confT_p = confT[(pos_idx+neg_idx).gt(0)].view(-1, self.num_classes)
+            conf_p = F.softmax(conf_p/self.T, dim=1)
+            confT_p = F.softmax(confT_p/self.T, dim=1)
+            loss_soft = weighted_KL_div(conf_p, confT_p, self.pos_w, self.neg_w)
+            loss_hint = F.mse_loss(conf_data, confT)
 
-        return loss_ssd + loss_hint*0.5, (loss_c+loss_l)/N
+            # Sum of losses: L(x,c,l,g) = (Lconf(x, c) + αLloc(x,l,g)) / N
+            
+            # loss_l /= N
+            # loss_c /= N
+            loss_cls = self.u * loss_c + (1 - self.u) * loss_soft
+            loss_ssd = (loss_cls + self.lmda * loss_reg) / N
+
+            return loss_ssd + loss_hint*0.5, (loss_c+loss_l)/N
+        else:
+            return (loss_c+loss_l)/N, (loss_c+loss_l)/N
