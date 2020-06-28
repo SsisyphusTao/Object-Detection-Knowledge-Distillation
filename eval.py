@@ -35,6 +35,8 @@ def str2bool(v):
 
 parser = argparse.ArgumentParser(
     description='Single Shot MultiBox Detector Evaluation')
+parser.add_argument('backbone', default='mbv2',
+                    help='mbv2 | vgg')
 parser.add_argument('--trained_model',
                     default='models/mb2-ssd-lite-mp-0_686.pth', type=str,
                     help='Trained state_dict file path to open')
@@ -361,7 +363,7 @@ cachedir: Directory for caching the annotations
     return rec, prec, ap
 
 
-def test_net(save_folder, net, cuda, dataset, transform, top_k,
+def test_net(save_folder, net, cuda, dataset, top_k,
              im_size=300, thresh=0.05):
     num_images = len(dataset)
     # all detections are collected into:
@@ -374,37 +376,37 @@ def test_net(save_folder, net, cuda, dataset, transform, top_k,
     _t = {'im_detect': Timer(), 'misc': Timer()}
     output_dir = get_output_dir('ssd300_120000', set_type)
     det_file = os.path.join(output_dir, 'detections.pkl')
+    with torch.no_grad():
+        for i in trange(num_images):
+            im, gt, h, w = dataset.pull_item(i)
 
-    for i in trange(num_images):
-        im, gt, h, w = dataset.pull_item(i)
+            x = im.unsqueeze(0)
+            if args.cuda:
+                x = x.cuda()
+            _t['im_detect'].tic()
+            detections = net(x)
+            detect_time = _t['im_detect'].toc(average=False)
 
-        x = Variable(im.unsqueeze(0))
-        if args.cuda:
-            x = x.cuda()
-        _t['im_detect'].tic()
-        detections = net(x).data
-        detect_time = _t['im_detect'].toc(average=False)
+            # skip j = 0, because it's the background class
+            for j in range(1, detections.size(1)):
+                dets = detections[0, j, :]
+                mask = dets[:, 0].gt(0.).expand(5, dets.size(0)).t()
+                dets = torch.masked_select(dets, mask).view(-1, 5)
+                if dets.size(0) == 0:
+                    continue
+                boxes = dets[:, 1:]
+                boxes[:, 0] *= w
+                boxes[:, 2] *= w
+                boxes[:, 1] *= h
+                boxes[:, 3] *= h
+                scores = dets[:, 0].cpu().numpy()
+                cls_dets = np.hstack((boxes.cpu().numpy(),
+                                    scores[:, np.newaxis])).astype(np.float32,
+                                                                    copy=False)
+                all_boxes[j][i] = cls_dets
 
-        # skip j = 0, because it's the background class
-        for j in range(1, detections.size(1)):
-            dets = detections[0, j, :]
-            mask = dets[:, 0].gt(0.).expand(5, dets.size(0)).t()
-            dets = torch.masked_select(dets, mask).view(-1, 5)
-            if dets.size(0) == 0:
-                continue
-            boxes = dets[:, 1:]
-            boxes[:, 0] *= w
-            boxes[:, 2] *= w
-            boxes[:, 1] *= h
-            boxes[:, 3] *= h
-            scores = dets[:, 0].cpu().numpy()
-            cls_dets = np.hstack((boxes.cpu().numpy(),
-                                  scores[:, np.newaxis])).astype(np.float32,
-                                                                 copy=False)
-            all_boxes[j][i] = cls_dets
-
-        # print('im_detect: {:d}/{:d} {:.3f}s'.format(i + 1,
-        #                                             num_images, detect_time))
+            # print('im_detect: {:d}/{:d} {:.3f}s'.format(i + 1,
+            #                                             num_images, detect_time))
 
     with open(det_file, 'wb') as f:
         pickle.dump(all_boxes, f, pickle.HIGHEST_PROTOCOL)
@@ -420,11 +422,13 @@ def evaluate_detections(box_list, output_dir, dataset):
 
 if __name__ == '__main__':
     # load net
-    num_classes = len(labelmap) + 1                      # +1 for background
-    net = create_mobilenetv2_ssd_lite('test')         # initialize SSD
-    # net.load_state_dict(torch.load(args.trained_model))
-    net.load_state_dict({k.replace('module.',''):v 
-                        for k,v in torch.load(args.trained_model).items()}, strict=False)
+    num_classes = len(labelmap) + 1                   # +1 for background
+    if args.backbone == 'vgg':
+        net = create_vgg('test')         # initialize SSD
+    else:
+        net = create_mobilenetv2_ssd_lite('test')
+    net.load_state_dict({k.replace('module.',''):v
+                        for k,v in torch.load(args.trained_model).items()}, strict=False)        
     net.eval()
     print('Finished loading model!')
     # load data
@@ -436,5 +440,5 @@ if __name__ == '__main__':
         cudnn.benchmark = True
     # evaluation
     test_net(args.save_folder, net, args.cuda, dataset,
-             BaseTransform(300, dataset_mean), args.top_k, 300,
+             args.top_k, 300,
              thresh=args.confidence_threshold)

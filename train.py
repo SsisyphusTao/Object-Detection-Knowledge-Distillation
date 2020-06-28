@@ -21,9 +21,9 @@ parser.add_argument('--batch_size', default=64, type=int,
                     help='Batch size for training')
 parser.add_argument('--teacher_model', default=None,
                     help='Checkpoint of vgg as teacher for distillation, it will turn on prepare_teacher_model if none')
-parser.add_argument('--resume', default='models/mb2-ssd-lite-mp-0_686.pth', type=str,
+parser.add_argument('--resume', default=None, type=str,
                     help='Checkpoint of mobilenetv2 state_dict file to resume training from')
-parser.add_argument('--epochs', default=40, type=int,
+parser.add_argument('--epochs', default=70, type=int,
                     help='the number of training epochs')
 parser.add_argument('--start_iter', default=0, type=int,
                     help='Resume training at this iter')
@@ -46,7 +46,7 @@ def train_one_epoch(loader, student_net, teacher_net, criterion, optimizer, epoc
         images, targets = batch
         images = images.cuda()
         # forward
-        teacher_predictions = teacher_net(images)
+        teacher_predictions = teacher_net(images.div(128.))
         if student_net:
             student_predictions = student_net(images.div(128.))
         # backprop
@@ -69,12 +69,16 @@ def train_one_epoch(loader, student_net, teacher_net, criterion, optimizer, epoc
 def train():
     mode = ''
     if args.prepare_teacher_model or not args.teacher_model:
-        if not os.path.exists('models/ssd300_mAP_77.43_v2.pth'):
-            print('Imagenet pretrained vgg model is not exist in models/, please follow the instruction in README.md')
-            raise FileExistsError
         vgg_net = create_vgg('train')
-        missing, unexpected = vgg_net.load_state_dict({k.replace('module.','').replace('loc.','').replace('conf.',''):v 
-        for k,v in torch.load('models/ssd300_mAP_77.43_v2.pth').items()}, strict=False)
+        if not args.resume:
+            if not os.path.exists('models/ssd300_mAP_77.43_v2.pth'):
+                print('Imagenet pretrained vgg model is not exist in models/, please follow the instruction in README.md')
+                raise FileExistsError
+            missing, unexpected = vgg_net.load_state_dict({k.replace('module.','').replace('loc.','').replace('conf.',''):v 
+                for k,v in torch.load('models/ssd300_mAP_77.43_v2.pth').items()}, strict=False)
+        else:
+            missing, unexpected = vgg_net.load_state_dict({k.replace('module.',''):v 
+                for k,v in torch.load(args.resume).items()}, strict=False)
         if missing:
             print('Missing:', missing)
         if unexpected:
@@ -83,6 +87,7 @@ def train():
         vgg_net = nn.DataParallel(vgg_net.cuda(), device_ids=args.num_of_gpu)
         optimizer = optim.SGD(vgg_net.parameters(), lr=args.lr, momentum=0.9,
                     weight_decay=5e-4)
+        # optimizer = optim.Adam(vgg_net.parameters(), lr=args.lr)
         mode = 'fine_tune'
     else:
         vgg_net = create_vgg('train')
@@ -96,13 +101,18 @@ def train():
         vgg_net = nn.DataParallel(vgg_net.cuda(), device_ids=args.num_of_gpu)
 
         mobilenetv2_test = create_mobilenetv2_ssd_lite('train')
-        if args.resume:
-            missing, unexpected = mobilenetv2_test.load_state_dict({k.replace('module.',''):v 
-            for k,v in torch.load(args.resume).items()}, strict=False)
-            if missing:
-                print('Missing:', missing)
-            if unexpected:
-                print('Unexpected:', unexpected)
+        if not args.resume:
+            if not os.path.exists('models/mb2-ssd-lite-mp-0_686.pth'):
+                print('Imagenet pretrained mobilenetv2 model is not exist in models/, please follow the instruction in README.md')
+                raise FileExistsError
+            else:
+                args.resume = 'models/mb2-ssd-lite-mp-0_686.pth'
+        missing, unexpected = mobilenetv2_test.load_state_dict({k.replace('module.',''):v 
+        for k,v in torch.load(args.resume).items()}, strict=False)
+        if missing:
+            print('Missing:', missing)
+        if unexpected:
+            print('Unexpected:', unexpected)
         mobilenetv2_test.train()
         mobilenetv2_test = nn.DataParallel(mobilenetv2_test.cuda(), device_ids=args.num_of_gpu)
         optimizer = optim.SGD(mobilenetv2_test.parameters(), lr=args.lr, momentum=0.9,
@@ -113,14 +123,14 @@ def train():
 
     for param_group in optimizer.param_groups:
         param_group['initial_lr'] = args.lr
-    adjust_learning_rate = optim.lr_scheduler.MultiStepLR(optimizer, [25, 35], 0.1, args.start_iter)
-    # adjust_learning_rate = optim.lr_scheduler.CosineAnnealingLR(optimizer, args.epochs, args.start_iter)
+    # adjust_learning_rate = optim.lr_scheduler.MultiStepLR(optimizer, [25, 35], 0.1, args.start_iter)
+    adjust_learning_rate = optim.lr_scheduler.CosineAnnealingLR(optimizer, args.epochs, args.start_iter)
 
     dataset = VOCDetection(root=args.dataset_root,
                            transform=SSDAugmentation(voc['min_dim'],
                                                      MEANS))
     criterion = MultiBoxLoss(voc['num_classes'], 0.5, True, 0, True, 3, 0.5,
-                        False)
+                        False).cuda()
 
     print('Task: ', mode)
     print('Loading the dataset...')
