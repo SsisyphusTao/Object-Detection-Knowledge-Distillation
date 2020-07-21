@@ -182,3 +182,20 @@ class MultiBoxLoss(nn.Module):
             return loss_ssd + loss_hint*0.5, (loss_c+loss_l)/N
         else:
             return (loss_c+loss_l)/N, (loss_c+loss_l)/N
+
+class NetwithLoss(nn.Module):
+    def __init__(self, teacher_net, student_net=None):
+        super().__init__()
+        self.criterion = MultiBoxLoss(cfg['num_classes'], 0.5, True, 0, True, 3, 0.5,
+                        False).cuda()
+        self.teacher_net = teacher_net
+        if student_net:
+            self.student_net = student_net
+
+    def forward(self, images, targets, u=0.5):
+        teacher_predictions = self.teacher_net(images)
+        try:
+            student_predictions = self.student_net(images)
+            return self.criterion(student_predictions[:3], teacher_predictions[:2], targets, u)
+        except:
+            return self.criterion(teacher_predictions[:3], None, targets)

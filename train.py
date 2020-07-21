@@ -4,7 +4,7 @@ from torch import nn
 import torch.optim as optim
 import torch.utils.data as data
 from nets import create_vgg, create_mobilenetv2_ssd_lite
-from nets.multibox_loss import MultiBoxLoss
+from nets.multibox_loss import NetwithLoss
 from utils.augmentations import SSDAugmentation
 import argparse
 import os
@@ -35,10 +35,12 @@ parser.add_argument('--num_of_gpu', default=[0,1,2,3], type=list,
                     help='GPUs ID for training')
 parser.add_argument('--save_folder', default='checkpoints/',
                     help='Directory for saving checkpoint models')
+parser.add_argument('--save_every_n_epochs', default=10, type=int,
+                    help='Saving checkpoints every N epochs')
 args = parser.parse_args()
 torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
-def train_one_epoch(loader, student_net, teacher_net, criterion, optimizer, epoch):
+def train_one_epoch(loader, getloss, optimizer, epoch):
     loss_amount = 0
     t0 = time.clock()
     # load train data
@@ -46,15 +48,8 @@ def train_one_epoch(loader, student_net, teacher_net, criterion, optimizer, epoc
         images, targets = batch
         images = images.cuda()
         # forward
-        teacher_predictions = teacher_net(images.div(128.))
-        if student_net:
-            student_predictions = student_net(images.div(128.))
-        # backprop
-            optimizer.zero_grad()
-            loss, loss_bare = criterion(student_predictions[:3], teacher_predictions[:2], targets, 0.5)
-        else:
-            optimizer.zero_grad()
-            loss, loss_bare = criterion(teacher_predictions[:3], None, targets)
+        optimizer.zero_grad()
+        loss, loss_bare = getloss(images.div(128.), targets)
         loss.backward()
         optimizer.step()
         t1 = time.clock()
@@ -64,75 +59,73 @@ def train_one_epoch(loader, student_net, teacher_net, criterion, optimizer, epoc
                     (loss_amount/iteration, iteration, t1-t0, epoch))
         t0 = t1
     print('Loss: %.6f --------------------------------------------' % (loss_amount/iteration))
-    return '_%d' % (loss_amount/iteration*1000)
+    return loss_amount/iteration*1000
 
 def train():
-    mode = ''
+    target = ''
     if args.prepare_teacher_model or not args.teacher_model:
-        vgg_net = create_vgg('train')
+        vgg_ = create_vgg('train')
         if not args.resume:
             if not os.path.exists('models/ssd300_mAP_77.43_v2.pth'):
                 print('Imagenet pretrained vgg model is not exist in models/, please follow the instruction in README.md')
                 raise FileExistsError
-            missing, unexpected = vgg_net.load_state_dict({k.replace('module.','').replace('loc.','').replace('conf.',''):v 
+            missing, unexpected = vgg_.load_state_dict({k.replace('module.','').replace('loc.','').replace('conf.',''):v 
                 for k,v in torch.load('models/ssd300_mAP_77.43_v2.pth').items()}, strict=False)
         else:
-            missing, unexpected = vgg_net.load_state_dict({k.replace('module.',''):v 
+            missing, unexpected = vgg_.load_state_dict({k.replace('module.',''):v 
                 for k,v in torch.load(args.resume).items()}, strict=False)
         if missing:
             print('Missing:', missing)
         if unexpected:
             print('Unexpected:', unexpected)
-        vgg_net.train()
-        vgg_net = nn.DataParallel(vgg_net.cuda(), device_ids=args.num_of_gpu)
-        optimizer = optim.SGD(vgg_net.parameters(), lr=args.lr, momentum=0.9,
+        vgg_.train()
+        vgg_ = nn.DataParallel(vgg_.cuda(), device_ids=args.num_of_gpu)
+        optimizer = optim.SGD(vgg_.parameters(), lr=args.lr, momentum=0.9,
                     weight_decay=5e-4)
-        # optimizer = optim.Adam(vgg_net.parameters(), lr=args.lr)
-        mode = 'fine_tune'
+        getloss = NetwithLoss(vgg_)
+        target = 'teacher_vgg'
     else:
-        vgg_net = create_vgg('train')
-        missing, unexpected = vgg_net.load_state_dict({k.replace('module.',''):v 
+        vgg_ = create_vgg('train')
+        missing, unexpected = vgg_.load_state_dict({k.replace('module.',''):v 
         for k,v in torch.load(args.teacher_model).items()})
         if missing:
             print('Missing:', missing)
         if unexpected:
             print('Unexpected:', unexpected)
-        vgg_net.eval()
-        vgg_net = nn.DataParallel(vgg_net.cuda(), device_ids=args.num_of_gpu)
+        vgg_.eval()
+        vgg_ = nn.DataParallel(vgg_.cuda(), device_ids=args.num_of_gpu)
 
-        mobilenetv2_test = create_mobilenetv2_ssd_lite('train')
+        mobilenetv2_ = create_mobilenetv2_ssd_lite('train')
         if not args.resume:
             if not os.path.exists('models/mb2-ssd-lite-mp-0_686.pth'):
                 print('Imagenet pretrained mobilenetv2 model is not exist in models/, please follow the instruction in README.md')
                 raise FileExistsError
             else:
                 args.resume = 'models/mb2-ssd-lite-mp-0_686.pth'
-        missing, unexpected = mobilenetv2_test.load_state_dict({k.replace('module.',''):v 
+        missing, unexpected = mobilenetv2_.load_state_dict({k.replace('module.',''):v 
         for k,v in torch.load(args.resume).items()}, strict=False)
         if missing:
             print('Missing:', missing)
         if unexpected:
             print('Unexpected:', unexpected)
-        mobilenetv2_test.train()
-        mobilenetv2_test = nn.DataParallel(mobilenetv2_test.cuda(), device_ids=args.num_of_gpu)
-        optimizer = optim.SGD(mobilenetv2_test.parameters(), lr=args.lr, momentum=0.9,
+        mobilenetv2_.train()
+        mobilenetv2_ = nn.DataParallel(mobilenetv2_.cuda(), device_ids=args.num_of_gpu)
+        optimizer = optim.SGD(mobilenetv2_.parameters(), lr=args.lr, momentum=0.9,
                     weight_decay=5e-4)
-        mode = 'distillation'
+        getloss = NetwithLoss(vgg_, mobilenetv2_)
+        target = 'student_mbv2'
 
     torch.backends.cudnn.benchmark = True
 
     for param_group in optimizer.param_groups:
         param_group['initial_lr'] = args.lr
-    # adjust_learning_rate = optim.lr_scheduler.MultiStepLR(optimizer, [25, 35], 0.1, args.start_iter)
-    adjust_learning_rate = optim.lr_scheduler.CosineAnnealingLR(optimizer, args.epochs, args.start_iter)
+    adjust_learning_rate = optim.lr_scheduler.MultiStepLR(optimizer, [25, 35], 0.1, args.start_iter)
+    # adjust_learning_rate = optim.lr_scheduler.CosineAnnealingLR(optimizer, args.epochs, args.start_iter)
 
     dataset = VOCDetection(root=args.dataset_root,
                            transform=SSDAugmentation(voc['min_dim'],
                                                      MEANS))
-    criterion = MultiBoxLoss(voc['num_classes'], 0.5, True, 0, True, 3, 0.5,
-                        False).cuda()
-
-    print('Task: ', mode)
+    print('Task: ', target)
     print('Loading the dataset...')
     data_loader = data.DataLoader(dataset, args.batch_size,
                                 num_workers=args.num_workers,
@@ -143,27 +136,15 @@ def train():
     print(args)
 
     # create batch iterator
-    if mode == 'fine_tune':
-        for iteration in range(args.start_iter + 1, args.epochs + 1):
-            loss = train_one_epoch(data_loader, None, vgg_net, criterion, optimizer, iteration)
-            adjust_learning_rate.step()
-            if (not iteration == args.start_iter and not iteration == args.epochs and iteration % 10 == 0):
-                print('Saving state, iter:', iteration)
-                torch.save(vgg_net.state_dict(), args.save_folder + 'teacher_vgg_' +
-                        repr(iteration) + loss + '.pth')
-        torch.save(vgg_net.state_dict(),
-                    args.save_folder + 'teacher_vgg_end' + loss + '.pth')
-
-    elif mode == 'distillation':
-        for iteration in range(args.start_iter + 1, args.epochs + 1):
-            loss = train_one_epoch(data_loader, mobilenetv2_test, vgg_net, criterion, optimizer, iteration)
-            adjust_learning_rate.step()
-            if (not iteration == args.start_iter and not iteration == args.epochs and iteration % 10 == 0):
-                print('Saving state, iter:', iteration)
-                torch.save(mobilenetv2_test.state_dict(), args.save_folder + 'student_mbv2_' +
-                        repr(iteration) + loss + '.pth')
-        torch.save(mobilenetv2_test.state_dict(),
-                    args.save_folder + 'student_mbv2_end' + loss + '.pth')
+    for iteration in range(args.start_iter + 1, args.epochs + 1):
+        loss = train_one_epoch(data_loader, getloss, optimizer, iteration)
+        adjust_learning_rate.step()
+        if not (iteration-args.start_iter) == 0 and iteration % args.save_every_n_epochs == 0:
+            print('Saving state, iter:', iteration)
+            torch.save(vgg_.state_dict() if 'teacher' in target else mobilenetv2_.state_dict(),
+                       args.save_folder + target + '_%03d_%d.pth'%(iteration, loss))
+    torch.save(vgg_.state_dict() if 'teacher' in target else mobilenetv2_.state_dict(),
+               args.save_folder + target + '_%d_%d.pth'%(args.epochs, loss))
 
 if __name__ == '__main__':
     train()
