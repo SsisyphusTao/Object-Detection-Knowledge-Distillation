@@ -4,3 +4,4 @@
 *.pyc
 *__pycache__
 ssd300_120000
+log.txt

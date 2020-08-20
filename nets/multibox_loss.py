@@ -5,21 +5,6 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 from .box_utils import match, log_sum_exp
 
-cfg = {
-    'num_classes': 21,
-    'lr_steps': (80000, 100000, 120000),
-    'max_iter': 120000,
-    'feature_maps': [38, 19, 10, 5, 3, 1],
-    'min_dim': 300,
-    'steps': [8, 16, 32, 64, 100, 300],
-    'min_sizes': [30, 60, 111, 162, 213, 264],
-    'max_sizes': [60, 111, 162, 213, 264, 315],
-    'aspect_ratios': [[2], [2, 3], [2, 3], [2, 3], [2], [2]],
-    'variance': [0.1, 0.2],
-    'clip': True,
-    'name': 'VOC',
-}
-
 def weighted_KL_div(ps, qt, pos_w, neg_w):
     eps = 1e-10
     ps = ps + eps
@@ -73,7 +58,7 @@ class MultiBoxLoss(nn.Module):
         self.do_neg_mining = neg_mining
         self.negpos_ratio = neg_pos
         self.neg_overlap = neg_overlap
-        self.variance = cfg['variance']
+        self.variance = [0.1, 0.2]
 
         self.neg_w = neg_w
         self.pos_w = pos_w
@@ -184,7 +169,7 @@ class MultiBoxLoss(nn.Module):
             return (loss_c+loss_l)/N, (loss_c+loss_l)/N
 
 class NetwithLoss(nn.Module):
-    def __init__(self, teacher_net, student_net=None):
+    def __init__(self, cfg, teacher_net, student_net=None):
         super().__init__()
         self.criterion = MultiBoxLoss(cfg['num_classes'], 0.5, True, 0, True, 3, 0.5,
                         False).cuda()
