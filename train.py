@@ -27,9 +27,9 @@ parser.add_argument('--epochs', default=70, type=int,
                     help='the number of training epochs')
 parser.add_argument('--start_iter', default=0, type=int,
                     help='Resume training at this iter')
-parser.add_argument('--num_workers', default=16, type=int,
+parser.add_argument('--num_workers', default=4, type=int,
                     help='Number of workers used in dataloading')
-parser.add_argument('--lr', '--learning-rate', default=1e-4, type=float,
+parser.add_argument('--lr', '--learning-rate', default=1.25e-4, type=float,
                     help='initial learning rate')
 parser.add_argument('--save_folder', default='checkpoints/',
                     help='Directory for saving checkpoint models')
@@ -89,12 +89,15 @@ def train():
         vgg_.train()
         optimizer = optim.SGD(vgg_.parameters(), lr=args.lr, momentum=0.9,
                     weight_decay=5e-4)
-        getloss = nn.parallel.DistributedDataParallel(NetwithLoss(voc, vgg_).cuda(), device_ids=[args.local_rank], find_unused_parameters=True)
+        if _distributed:
+            getloss = nn.parallel.DistributedDataParallel(NetwithLoss(voc, vgg_).cuda(), device_ids=[args.local_rank], find_unused_parameters=True)
+        else:
+            getloss = NetwithLoss(voc, vgg_).cuda()
         target = 'teacher_vgg'
     else:
         vgg_ = create_vgg('train')
         missing, unexpected = vgg_.load_state_dict({k.replace('module.',''):v 
-        for k,v in torch.load(args.teacher_model, map_location='cpu').items()})
+        for k,v in torch.load(args.teacher_model, map_location='cpu').items()}, strict=False)
         vgg_.eval()
 
         mobilenetv2_ = create_mobilenetv2_ssd_lite('train')
@@ -104,17 +107,21 @@ def train():
                 raise FileExistsError
             else:
                 args.resume = 'models/mb2-ssd-lite-mp-0_686.pth'
-        missing, unexpected = mobilenetv2_.load_state_dict({k.replace('module.',''):v 
-        for k,v in torch.load(args.resume, map_location='cpu').items()}, strict=False)
+        # missing, unexpected = mobilenetv2_.load_state_dict({k.replace('module.',''):v 
+        # for k,v in torch.load(args.resume, map_location='cpu').items()}, strict=False)
         mobilenetv2_.train()
-        optimizer = optim.SGD(mobilenetv2_.parameters(), lr=args.lr, momentum=0.9,
-                    weight_decay=5e-4)
-        getloss = nn.parallel.DistributedDataParallel(NetwithLoss(voc, vgg_, mobilenetv2_).cuda(), device_ids=[args.local_rank], find_unused_parameters=True)
+        # optimizer = optim.SGD(mobilenetv2_.parameters(), lr=args.lr, momentum=0.9,
+        #             weight_decay=5e-4)
+        optimizer = optim.Adam(mobilenetv2_.parameters(), lr=args.lr)
+        if _distributed:
+            getloss = nn.parallel.DistributedDataParallel(NetwithLoss(voc, vgg_, mobilenetv2_).cuda(), device_ids=[args.local_rank], find_unused_parameters=True)
+        else:
+            getloss = NetwithLoss(voc, vgg_, mobilenetv2_).cuda()
         target = 'student_mbv2'
 
     for param_group in optimizer.param_groups:
         param_group['initial_lr'] = args.lr
-    adjust_learning_rate = optim.lr_scheduler.MultiStepLR(optimizer, [45, 60], 0.1, args.start_iter)
+    adjust_learning_rate = optim.lr_scheduler.MultiStepLR(optimizer, [120, 180], 0.1, args.start_iter)
     # adjust_learning_rate = optim.lr_scheduler.CosineAnnealingLR(optimizer, args.epochs, args.start_iter)
 
     if not args.local_rank:
@@ -123,11 +130,17 @@ def train():
     dataset = VOCDetection(root=args.dataset_root,
                            transform=SSDAugmentation(voc['min_dim'],
                                                      MEANS))
-    sampler = torch.utils.data.distributed.DistributedSampler(dataset)
-    data_loader = data.DataLoader(dataset, args.batch_size,
-                                num_workers=args.num_workers,
-                                shuffle=False, collate_fn=detection_collate,
-                                pin_memory=True, sampler=sampler)
+    if _distributed:
+        sampler = torch.utils.data.distributed.DistributedSampler(dataset)
+        data_loader = data.DataLoader(dataset, args.batch_size,
+                                    num_workers=args.num_workers,
+                                    shuffle=False, collate_fn=detection_collate,
+                                    pin_memory=True, sampler=sampler)
+    else:
+        data_loader = data.DataLoader(dataset, args.batch_size,
+                            num_workers=args.num_workers,
+                            shuffle=True, collate_fn=detection_collate,
+                            pin_memory=True)
     if not args.local_rank:
         print('Finished!')
         print('Training SSD on:', dataset.name)
@@ -138,13 +151,12 @@ def train():
     for iteration in range(args.start_iter + 1, args.epochs + 1):
         loss = train_one_epoch(data_loader, getloss, optimizer, iteration)
         adjust_learning_rate.step()
-        if not (iteration-args.start_iter) == 0 and iteration % args.save_every_n_epochs == 0 and not args.local_rank:
-            print('Saving state, iter:', iteration)
-            torch.save(vgg_.state_dict() if 'teacher' in target else mobilenetv2_.state_dict(),
-                       args.save_folder + target + '_%03d_%d.pth'%(iteration, loss))
-    if not args.local_rank:
-        torch.save(vgg_.state_dict() if 'teacher' in target else mobilenetv2_.state_dict(),
-                args.save_folder + target + '_%d_%d.pth'%(args.epochs, loss))
+        if not (iteration-args.start_iter) == 0 and iteration % args.save_every_n_epochs == 0:
+            torch.distributed.barrier()
+            if not args.local_rank:
+                print('Saving state, iter:', iteration)
+                torch.save(vgg_.state_dict() if 'teacher' in target else mobilenetv2_.state_dict(),
+                        args.save_folder + target + '_%03d_%d.pth'%(iteration, loss))
 
 if __name__ == '__main__':
     train()
