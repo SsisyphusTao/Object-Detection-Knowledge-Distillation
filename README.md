@@ -68,6 +68,6 @@ Here I provide one less better example including [teacher](https://drive.google.
 
 ## TODO
 
-1. Provide more details.
+1. Provide more details(https://zhuanlan.zhihu.com/p/260370225).
 2. Amend the illogical part.
 3. If possible, improve the method to get better result.
