@@ -4,7 +4,7 @@ This is an implementation of Chen, G. et al. (2017) [‘Learning efficient objec
 
 ## Overall Structure
 
-![structure](structure.png)
+![structure](https://user-images.githubusercontent.com/47047345/123899722-4cb42f00-d99a-11eb-921f-17b63784f4d8.png)
 
 ## Introduction
 
@@ -65,6 +65,10 @@ Mean AP | 0.6868             | 0.6999  | 0.6945
 The BestEver is the best model I have got but I deleted it becasue of trusting I could get a better one soon...But, apparently, it is still the best one...
 
 Here I provide one less better example including [teacher](https://drive.google.com/file/d/1RqTw3D2R-HIgXQmLr2jqfk7UEb_7bOJ2/view?usp=sharing) and [student](https://drive.google.com/file/d/1lKOLk259_ugcoLpgg5IU7bvpVclaGQf5/view?usp=sharing) to prove this work.
+
+## UPDATE
+
+update yolov5 knowledge distillation in branch [`yolov5`](https://github.com/SsisyphusTao/SSD-Knowledge-Distillation/tree/yolov5).
 
 ## TODO
 
