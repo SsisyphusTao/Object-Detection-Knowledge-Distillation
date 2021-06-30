@@ -1,7 +1,6 @@
-/.vscode
-*.pkl
-*.pth
-*.pyc
 *__pycache__
-ssd300_120000
-log.txt
+*.log
+inference
+runs
+checkpoints
+goods
