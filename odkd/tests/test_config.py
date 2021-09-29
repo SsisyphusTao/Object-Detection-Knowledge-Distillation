@@ -8,5 +8,6 @@ def test_config():
         'MODE': 'Test'
     }
     config = Config(default_parameters)
+    config.parse_args(['-c','default_training_config.json'])
     config['TestPass'] = True
     config.print()

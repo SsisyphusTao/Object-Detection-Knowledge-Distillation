@@ -3,19 +3,10 @@ import json
 
 
 class Config(dict):
-    """The summary line for a class docstring should fit on one line.
+    """This is a config dict for determing every details through training.
 
-    If the class has public attributes, they may be documented here
-    in an ``Attributes`` section and follow the same formatting as a
-    function's ``Args`` section. Alternatively, attributes may be documented
-    inline with the attribute's declaration (see __init__ method below).
-
-    Properties created with the ``@property`` decorator should be documented
-    in the property's getter method.
-
-    Attributes:
-        attr1 (str): Description of `attr1`.
-        attr2 (:obj:`int`, optional): Description of `attr2`.
+    There is two ways to set the config, by dict parameter or a json file.
+    The priority of them is json file > dict parameter.
 
     """
 
@@ -23,14 +14,29 @@ class Config(dict):
         self,
         default_parameters: dict
     ):
+        """Example function with types documented in the docstring.
+
+        `PEP 484`_ type annotations are supported. If attribute, parameter, and
+        return types are annotated according to `PEP 484`_, they do not need to be
+        included in the docstring:
+
+        Args:
+            default_parameters (dict): The first parameter.
+        """
         super().__init__()
+
+        self.update(default_parameters)
+
+
+
+    def parse_args(self, argv=None):
         parser = argparse.ArgumentParser(
             description='Object Detection Knowledge Distillation.')
         parser.add_argument(
             '--train_config', '-c', default='', type=str, help='JSON config to determine training parameters')
-        args = parser.parse_args()
-
-        self.update(default_parameters)
+        parser.add_argument('--local_rank', default=0, type=int,
+                            help='Used for multi-process training. Can either be manually set or automatically set by using \'python -m multiproc\'.')
+        args = parser.parse_args(argv)
 
         if args.train_config:
             with open(args.train_config, 'r') as f:
@@ -39,3 +45,6 @@ class Config(dict):
     def print(self):
         """ Print all content values with a pretty way."""
         print(json.dumps(self, sort_keys=False, indent=4))
+
+    def check(self):
+        pass

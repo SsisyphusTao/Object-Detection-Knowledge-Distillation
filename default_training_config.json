@@ -1,0 +1,24 @@
+{
+    "Dataset":
+    {
+        "dataset_type": "voc",
+        "dataset_path": ".."
+    },
+    "Training":
+    {
+        "batch_size": 32,
+        "epochs": 100,
+        "initial_learning_rate": 1e-4,
+        "start_iter": 0,
+        "resume": null
+    },
+    "Evaluation":
+    {
+        "period": 1
+    },
+    "Distillation":
+    {
+        "active": false,
+        "target_net": "mobile_net"
+    }
+}
