@@ -4,10 +4,13 @@ from odkd.utils import (
 
 
 def test_config():
-    default_parameters = {
+    test_arguments = {
         'MODE': 'Test'
     }
-    config = Config(default_parameters)
-    config.parse_args(['-c','default_training_config.json'])
+    config = Config(test_arguments)
+    config.parse_args(['-c', 'default_training_config.json'])
     config['TestPass'] = True
     config.print()
+    assert config.check() == set()
+    del config['epochs']
+    assert config.check() == set(['epochs'])

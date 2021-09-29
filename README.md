@@ -1,5 +1,5 @@
 # Object Detection Knowledge Distillation(ODKD)
 
-![coverage](https://img.shields.io/badge/coverage-0%-orange.svg)
+![coverage](https://codecov.io/github/SsisyphusTao/SSD-Knowledge-Distillation/coverage.svg?branch=dev)
 
-Coming soon...
+Coming Soon...

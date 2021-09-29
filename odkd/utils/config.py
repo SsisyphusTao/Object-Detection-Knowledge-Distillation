@@ -8,28 +8,29 @@ class Config(dict):
     There is two ways to set the config, by dict parameter or a json file.
     The priority of them is json file > dict parameter.
 
+    Args:
+        required_arguments (dict): Minimum required arguments for training start.
+
+    Attributes:
+        required (set): Keys of minimum required arguments.
+
     """
 
-    def __init__(
-        self,
-        default_parameters: dict
-    ):
-        """Example function with types documented in the docstring.
-
-        `PEP 484`_ type annotations are supported. If attribute, parameter, and
-        return types are annotated according to `PEP 484`_, they do not need to be
-        included in the docstring:
-
-        Args:
-            default_parameters (dict): The first parameter.
-        """
+    def __init__(self, required_arguments: dict):
         super().__init__()
+        self.update(required_arguments)
 
-        self.update(default_parameters)
-
-
+        self.required = set(['dataset_type', 'dataset_path',
+                             'batch_size', 'epochs', 'initial_learning_rate',
+                             'eval_period', 'distillation', 'target_net'])
 
     def parse_args(self, argv=None):
+        """Take command line arguments and updating parameters.
+
+        Args:
+            argv (list): FOR_TEST.
+
+        """
         parser = argparse.ArgumentParser(
             description='Object Detection Knowledge Distillation.')
         parser.add_argument(
@@ -40,6 +41,7 @@ class Config(dict):
 
         if args.train_config:
             with open(args.train_config, 'r') as f:
+                # Loading parameters from config file, this will overwrite the same parameter.
                 self.update(json.load(f))
 
     def print(self):
@@ -47,4 +49,10 @@ class Config(dict):
         print(json.dumps(self, sort_keys=False, indent=4))
 
     def check(self):
-        pass
+        """ Check if all required arguments are defined
+
+        Returns:
+            list: Return the missing arguments.
+
+        """
+        return self.required.difference(set(self.keys()))
