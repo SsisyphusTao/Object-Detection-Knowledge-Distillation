@@ -8,9 +8,7 @@ def test_config():
         'MODE': 'Test'
     }
     config = Config(test_arguments)
-    config.parse_args(['-c', 'default_training_config.json'])
+    config.parse_args(['-c', 'default_training_config.yml'])
     config['TestPass'] = True
+    config.check()
     config.print()
-    assert config.check() == set()
-    del config['epochs']
-    assert config.check() == set(['epochs'])
