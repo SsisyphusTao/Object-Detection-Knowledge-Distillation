@@ -1,3 +1,4 @@
+"""No docstring :)"""
 from odkd.utils.config import Config
 
 

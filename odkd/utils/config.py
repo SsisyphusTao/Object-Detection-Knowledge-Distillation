@@ -1,5 +1,8 @@
+"""This moudule contains config class for training."""
+import os
 import argparse
 import yaml
+import torch
 
 
 class Config(dict):
@@ -9,16 +12,16 @@ class Config(dict):
     The priority of them is yaml file > dict parameter.
 
     Args:
-        required_arguments (dict): Minimum required arguments for training start.
+        arguments (dict): Arguments for training.
 
     Attributes:
         required (set): Keys of minimum required arguments.
 
     """
 
-    def __init__(self, required_arguments: dict):
+    def __init__(self, arguments: dict = ()):
         super().__init__()
-        self.update(required_arguments)
+        self.update(arguments)
 
         self.required = {'Dataset': {'dataset_type', 'dataset_path'},
                          'Training': {'batch_size', 'epochs', 'initial_learning_rate'},
@@ -32,6 +35,10 @@ class Config(dict):
             argv (list): FOR_TEST.
 
         """
+
+        # Training with cpu is not supported and not recommended.
+        assert torch.cuda.is_available(), 'CUDA is not available.'
+
         parser = argparse.ArgumentParser(
             description='Object Detection Knowledge Distillation.')
         parser.add_argument('--train_config', '-c',
@@ -46,6 +53,11 @@ class Config(dict):
             with open(args.train_config, 'r', encoding='utf-8') as config_file:
                 # Loading parameters from config file, this will overwrite the same parameter.
                 self.update(yaml.safe_load(config_file))
+        self['local_rank'] = args.local_rank
+        self['Training']['distributed'] = False
+        if 'WORLD_SIZE' in os.environ:
+            self['Training']['distributed'] = (
+                int(os.environ['WORLD_SIZE']) > 1 and torch.distributed.is_available())
 
     def print(self):
         """ Print all content values with a pretty way."""

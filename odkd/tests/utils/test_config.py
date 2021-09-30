@@ -1,8 +1,11 @@
+"""No docstring :)"""
+import pytest
 from odkd.utils import (
     Config
 )
 
-
+@pytest.mark.run(order=0)
+@pytest.mark.dependency(name='test_config')
 def test_config():
     test_arguments = {
         'MODE': 'Test'
