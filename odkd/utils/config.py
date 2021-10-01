@@ -23,10 +23,10 @@ class Config(dict):
         super().__init__()
         self.update(arguments)
 
-        self.required = {'Dataset': {'dataset_type', 'dataset_path'},
-                         'Training': {'batch_size', 'epochs', 'initial_learning_rate'},
-                         'Evaluation': {'period'},
-                         'Task': {'distillation', 'target_net'}}
+        self._required = {'Dataset': {'dataset_type', 'dataset_path'},
+                          'Training': {'batch_size', 'epochs', 'initial_learning_rate'},
+                          'Evaluation': {'period'},
+                          'Task': {'distillation', 'target_net'}}
 
     def parse_args(self, argv=None):
         """Take command line arguments and updating parameters.
@@ -37,7 +37,7 @@ class Config(dict):
         """
 
         # Training with cpu is not supported and not recommended.
-        assert torch.cuda.is_available(), 'CUDA is not available.'
+        # assert torch.cuda.is_available(), 'CUDA is not available.'
 
         parser = argparse.ArgumentParser(
             description='Object Detection Knowledge Distillation.')
@@ -70,11 +70,11 @@ class Config(dict):
             list: Return the missing arguments.
 
         """
-        missing = set(self.required).difference(set(self.keys()))
+        missing = set(self._required).difference(set(self.keys()))
         if missing:
             raise KeyError(missing)
 
-        for i in self.required:
-            missing = self.required[i].difference(set(self[i].keys()))
+        for i in self._required:
+            missing = self._required[i].difference(set(self[i].keys()))
             if missing:
                 raise KeyError(missing)

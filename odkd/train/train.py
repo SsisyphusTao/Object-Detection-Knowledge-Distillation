@@ -6,8 +6,8 @@ from odkd.utils import (
 
 class Trainer():
     def __init__(self, config: Config) -> None:
-        self.config = config
-        self.config.check()
+        self._config = config
+        self._config.check()
 
     def start(self):
         pass
