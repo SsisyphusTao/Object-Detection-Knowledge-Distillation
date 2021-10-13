@@ -1,4 +1,4 @@
-"""No docstring :)"""
+
 import pytest
 from odkd.utils import (
     Config
