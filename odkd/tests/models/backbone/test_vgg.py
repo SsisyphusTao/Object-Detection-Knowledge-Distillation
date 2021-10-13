@@ -8,6 +8,7 @@ from odkd.models.backbone import (
 
 x = torch.randn(1, 3, 300, 300, dtype=torch.float32)
 
+
 def test_vgg16_bn():
     vgg16 = vgg16_bn()
     y = vgg16(x)
