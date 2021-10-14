@@ -1,10 +1,18 @@
-import torch
-import torch.nn as nn
-
+"""Some layers and blocks for model construction"""
+from torch import nn
 try:
     from torch.hub import load_state_dict_from_url
 except ImportError:
     from torch.utils.model_zoo import load_url as load_state_dict_from_url
+
+__all__ = [
+    'load_state_dict_from_url',
+    '_make_divisible',
+    'SeperableConv2d',
+    'ConvBNReLU',
+    'InvertedResidual',
+    'SSDLite'
+]
 
 
 def _make_divisible(v, divisor, min_value=None):
@@ -46,7 +54,7 @@ class ConvBNReLU(nn.Sequential):
         padding = (kernel_size - 1) // 2
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
-        super(ConvBNReLU, self).__init__(
+        super().__init__(
             nn.Conv2d(in_planes, out_planes, kernel_size, stride,
                       padding, groups=groups, bias=False),
             norm_layer(out_planes),
@@ -56,7 +64,7 @@ class ConvBNReLU(nn.Sequential):
 
 class InvertedResidual(nn.Module):
     def __init__(self, inp, oup, stride, expand_ratio, norm_layer=None):
-        super(InvertedResidual, self).__init__()
+        super().__init__()
         self.stride = stride
         assert stride in [1, 2]
 
@@ -89,6 +97,8 @@ class InvertedResidual(nn.Module):
 
 
 class SSDLite(nn.Module):
+    """SSDlite detect head which only has 3000 anchors"""
+
     def __init__(self, num_classes, width_mult=1.0, div_nearest=8):
         super().__init__()
 

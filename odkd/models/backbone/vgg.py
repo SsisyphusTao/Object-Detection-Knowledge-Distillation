@@ -1,6 +1,6 @@
 """Basically, this module is refacator from https://github.com/pytorch/vision/blob/master/torchvision/models/vgg.py"""
 import torch
-import torch.nn as nn
+from torch import nn
 from typing import Union, List, Dict, Any, cast
 from .._utils import load_state_dict_from_url
 
@@ -29,7 +29,7 @@ class VGG(nn.Module):
         features: nn.Module,
         init_weights: bool = True
     ) -> None:
-        super(VGG, self).__init__()
+        super().__init__()
         self.features = features
         self.avgpool = nn.AdaptiveAvgPool2d((7, 7))
         if init_weights:

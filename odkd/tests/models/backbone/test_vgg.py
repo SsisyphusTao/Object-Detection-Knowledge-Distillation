@@ -3,7 +3,7 @@ import torch.nn
 
 from odkd.models.backbone import (
     vgg16_bn,
-    vgg19_bn
+    # vgg19_bn
 )
 
 x = torch.randn(1, 3, 300, 300, dtype=torch.float32)

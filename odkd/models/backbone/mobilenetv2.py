@@ -31,7 +31,7 @@ class MobileNetV2(nn.Module):
             norm_layer: Module specifying the normalization layer to use
 
         """
-        super(MobileNetV2, self).__init__()
+        super().__init__()
 
         if block is None:
             block = InvertedResidual
@@ -56,8 +56,8 @@ class MobileNetV2(nn.Module):
 
         # only check the first element, assuming user knows t,c,n,s are required
         if len(inverted_residual_setting) == 0 or len(inverted_residual_setting[0]) != 4:
-            raise ValueError("inverted_residual_setting should be non-empty "
-                             "or a 4-element list, got {}".format(inverted_residual_setting))
+            raise ValueError('inverted_residual_setting should be non-empty '
+                             'or a 4-element list, got {}'.format(inverted_residual_setting))
 
         # building first layer
         input_channel = _make_divisible(
