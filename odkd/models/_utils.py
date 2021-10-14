@@ -1,4 +1,5 @@
 """Some layers and blocks for model construction"""
+import torch
 from torch import nn
 try:
     from torch.hub import load_state_dict_from_url
@@ -102,7 +103,10 @@ class SSDLite(nn.Module):
     def __init__(self, num_classes, width_mult=1.0, div_nearest=8):
         super().__init__()
 
-        def div(x): return _make_divisible(x * width_mult, div_nearest)
+        self.num_classes = num_classes
+
+        def div(x):
+            return _make_divisible(x * width_mult, div_nearest)
 
         self.extras = nn.ModuleList([
             InvertedResidual(div(1280), div(512), stride=2, expand_ratio=0.2),
@@ -138,3 +142,17 @@ class SSDLite(nn.Module):
             nn.Conv2d(in_channels=div(64),
                       out_channels=6 * num_classes, kernel_size=1),
         ])
+
+    def forward(self, layers):
+        loc = []
+        conf = []
+
+        for (x, l, c) in zip(layers, self.regression_headers, self.classification_headers):
+            loc.append(l(x).permute(0, 2, 3, 1).contiguous())
+            conf.append(c(x).permute(0, 2, 3, 1).contiguous())
+
+        loc = torch.cat([i.view(i.size(0), -1) for i in loc], 1)
+        conf = torch.cat([i.view(i.size(0), -1) for i in conf], 1)
+
+        if self.training:
+            return  loc.view(loc.size(0), -1, 4), conf.view(conf.size(0), -1, self.num_classes)
