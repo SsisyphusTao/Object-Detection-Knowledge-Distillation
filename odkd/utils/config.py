@@ -61,7 +61,7 @@ class Config(dict):
 
     def print(self):
         """ Print all content values with a pretty way."""
-        print(yaml.dump(self, sort_keys=False, default_flow_style=False))
+        print(yaml.dump(dict(self), sort_keys=False, default_flow_style=False))
 
     def check(self):
         """ Check if all required arguments are defined

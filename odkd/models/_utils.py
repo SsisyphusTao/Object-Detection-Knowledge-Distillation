@@ -1,5 +1,4 @@
 """Some layers and blocks for model construction"""
-import torch
 from torch import nn
 try:
     from torch.hub import load_state_dict_from_url
@@ -11,8 +10,7 @@ __all__ = [
     '_make_divisible',
     'SeperableConv2d',
     'ConvBNReLU',
-    'InvertedResidual',
-    'SSDLite'
+    'InvertedResidual'
 ]
 
 
@@ -95,64 +93,3 @@ class InvertedResidual(nn.Module):
             return x + self.conv(x)
         else:
             return self.conv(x)
-
-
-class SSDLite(nn.Module):
-    """SSDlite detect head which only has 3000 anchors"""
-
-    def __init__(self, num_classes, width_mult=1.0, div_nearest=8):
-        super().__init__()
-
-        self.num_classes = num_classes
-
-        def div(x):
-            return _make_divisible(x * width_mult, div_nearest)
-
-        self.extras = nn.ModuleList([
-            InvertedResidual(div(1280), div(512), stride=2, expand_ratio=0.2),
-            InvertedResidual(div(512), div(256), stride=2, expand_ratio=0.25),
-            InvertedResidual(div(256), div(256), stride=2, expand_ratio=0.5),
-            InvertedResidual(div(256), div(64), stride=2, expand_ratio=0.25)
-        ])
-        self.regression_headers = nn.ModuleList([
-            SeperableConv2d(in_channels=div(576), out_channels=6 * 4,
-                            kernel_size=3, padding=1, onnx_compatible=False),
-            SeperableConv2d(in_channels=div(
-                1280), out_channels=6 * 4, kernel_size=3, padding=1, onnx_compatible=False),
-            SeperableConv2d(in_channels=div(512), out_channels=6 * 4,
-                            kernel_size=3, padding=1, onnx_compatible=False),
-            SeperableConv2d(in_channels=div(256), out_channels=6 * 4,
-                            kernel_size=3, padding=1, onnx_compatible=False),
-            SeperableConv2d(in_channels=div(256), out_channels=6 * 4,
-                            kernel_size=3, padding=1, onnx_compatible=False),
-            nn.Conv2d(in_channels=div(64),
-                      out_channels=6 * 4, kernel_size=1),
-        ])
-        self.classification_headers = nn.ModuleList([
-            SeperableConv2d(in_channels=div(576),
-                            out_channels=6 * num_classes, kernel_size=3, padding=1),
-            SeperableConv2d(in_channels=div(1280),
-                            out_channels=6 * num_classes, kernel_size=3, padding=1),
-            SeperableConv2d(in_channels=div(512),
-                            out_channels=6 * num_classes, kernel_size=3, padding=1),
-            SeperableConv2d(in_channels=div(256),
-                            out_channels=6 * num_classes, kernel_size=3, padding=1),
-            SeperableConv2d(in_channels=div(256),
-                            out_channels=6 * num_classes, kernel_size=3, padding=1),
-            nn.Conv2d(in_channels=div(64),
-                      out_channels=6 * num_classes, kernel_size=1),
-        ])
-
-    def forward(self, layers):
-        loc = []
-        conf = []
-
-        for (x, l, c) in zip(layers, self.regression_headers, self.classification_headers):
-            loc.append(l(x).permute(0, 2, 3, 1).contiguous())
-            conf.append(c(x).permute(0, 2, 3, 1).contiguous())
-
-        loc = torch.cat([i.view(i.size(0), -1) for i in loc], 1)
-        conf = torch.cat([i.view(i.size(0), -1) for i in conf], 1)
-
-        if self.training:
-            return  loc.view(loc.size(0), -1, 4), conf.view(conf.size(0), -1, self.num_classes)
