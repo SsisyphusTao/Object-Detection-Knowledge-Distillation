@@ -1,0 +1,85 @@
+import torch
+from torch.utils.data import DataLoader
+from torchvision.datasets.voc import VOCDetection
+
+import os
+import numpy as np
+
+from odkd.data.augmentations import SSDAugmentation
+
+VOC_CLASSES = (
+    'aeroplane', 'bicycle', 'bird', 'boat',
+    'bottle', 'bus', 'car', 'cat', 'chair',
+    'cow', 'diningtable', 'dog', 'horse',
+    'motorbike', 'person', 'pottedplant',
+    'sheep', 'sofa', 'train', 'tvmonitor')
+
+class_to_ind = dict(zip(VOC_CLASSES, range(len(VOC_CLASSES))))
+
+
+def voc_transform(image, target):
+    """Transforms a VOC annotation into a Tensor of bbox coords and label index
+    Initilized with a dictionary lookup of classnames to indexes
+    Arguments:
+        class_to_ind (dict, optional): dictionary lookup of classnames -> indexes
+            (default: alphabetic indexing of VOC's 20 classes)
+        keep_difficult (bool, optional): keep difficult instances or not
+            (default: False)
+        height (int): height
+        width (int): width
+    """
+    image = np.asarray(image)
+    res = []
+
+    width = int(target['annotation']['size']['width'])
+    height = int(target['annotation']['size']['height'])
+    for obj in target['annotation']['object']:
+        name = obj['name']
+        bbox = obj['bndbox']
+
+        pts = ['xmin', 'ymin', 'xmax', 'ymax']
+        bndbox = []
+        for i, pt in enumerate(pts):
+            cur_pt = int(bbox[pt]) - 1
+            # scale height or width
+            cur_pt = cur_pt / width if i % 2 == 0 else cur_pt / height
+            bndbox.append(cur_pt)
+        label_idx = class_to_ind[name]
+        bndbox.append(label_idx)
+        res += [bndbox]  # [xmin, ymin, xmax, ymax, label_ind]
+    # [[xmin, ymin, xmax, ymax, label_ind], ... ]
+    res = np.array(res)
+    return image, res[:, :4], res[:, 4]
+
+
+def detection_collate(batch):
+    """Custom collate fn for dealing with batches of images that have a different
+    number of associated object annotations (bounding boxes).
+    Arguments:
+        batch: (tuple) A tuple of tensor images and lists of annotations
+    Return:
+        A tuple containing:
+            1) (tensor) batch of images stacked on their 0 dim
+            2) (list of tensors) annotations for a given image are stacked on
+                                 0 dim
+    """
+    images, targets = [], []
+    for sample in batch:
+        images.append(torch.Tensor(sample[0]))
+        targets.append(torch.Tensor(sample[1]))
+    return torch.stack(images, 0).permute(0, 3, 1, 2), targets
+
+
+def create_voc_dataloader(cfg, augmentation=SSDAugmentation(voc_transform)):
+    try:
+        dataset = VOCDetection(cfg['dataset_path'], transforms=augmentation)
+    except RuntimeError:
+        dataset = VOCDetection(cfg['dataset_path'],
+                               transform=augmentation, download=True)
+    nw = min([os.cpu_count(), cfg['batch_size'] if cfg['batch_size']
+             > 1 else 0, cfg['workers']])  # number of workers
+    # sampler = torch.utils.data.distributed.DistributedSampler(dataset)
+    return DataLoader(dataset, cfg['batch_size'],
+                      num_workers=nw,
+                      collate_fn=detection_collate,
+                      pin_memory=True)

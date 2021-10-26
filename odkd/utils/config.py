@@ -23,8 +23,7 @@ class Config(dict):
         super().__init__()
         self.update(arguments)
 
-        self._required = {'Dataset': {'dataset_type', 'dataset_path'},
-                          'Training': {'batch_size', 'epochs', 'initial_learning_rate'},
+        self._required = {'Training': {'dataset', 'dataset_path', 'batch_size', 'epochs', 'initial_learning_rate'},
                           'Evaluation': {'period'},
                           'Task': {'distillation', 'target_net'}}
 

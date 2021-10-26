@@ -1,6 +1,5 @@
 
 """SSDLite detector relative blocks"""
-from operator import index
 import torch
 from torch import nn
 from torchvision.ops import nms
@@ -8,9 +7,9 @@ from torchvision.ops import nms
 from math import sqrt
 from itertools import product
 
-from ._utils import InvertedResidual, SeperableConv2d, _make_divisible
-from .backbone import mobilenet_v2, vgg16_bn
-from .box_utils import decode
+from odkd.models._utils import InvertedResidual, SeperableConv2d, _make_divisible
+from odkd.models.backbone import mobilenet_v2, vgg16_bn
+from odkd.models.box_utils import decode
 
 
 class Detect(nn.Module):

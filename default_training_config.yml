@@ -1,9 +1,8 @@
-Dataset:
-    dataset_type: voc
-    dataset_path: null
-
 Training:
+    dataset: voc
+    dataset_path: ~/data
     batch_size: 32
+    workers: 8
     epochs: 100
     initial_learning_rate: 1e-4
     start_iter: 0
@@ -14,7 +13,8 @@ Evaluation:
 
 Task:
     distillation: false
-    target_net: mobilenet
+    distillated_net: vgg16
+    target_net: mobilenetv2
 
 SSDLite:
     input_size: 300
@@ -30,6 +30,9 @@ SSDLite:
     topK: 200
     conf_thresh: 0.01
     nms_thresh: 0.45
+
+    overlap_thresh: 0.5
+    neg_pos: 3
 
 Loss:
     temperature: 1.0

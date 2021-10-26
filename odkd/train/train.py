@@ -1,4 +1,3 @@
-import torch
 from odkd.utils import (
     Config
 )
