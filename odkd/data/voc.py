@@ -5,7 +5,6 @@ from torchvision.datasets.voc import VOCDetection
 import os
 import numpy as np
 
-from odkd.data.augmentations import SSDAugmentation
 
 VOC_CLASSES = (
     'aeroplane', 'bicycle', 'bird', 'boat',
@@ -17,18 +16,19 @@ VOC_CLASSES = (
 class_to_ind = dict(zip(VOC_CLASSES, range(len(VOC_CLASSES))))
 
 
-def voc_transform(image, target):
-    """Transforms a VOC annotation into a Tensor of bbox coords and label index
-    Initilized with a dictionary lookup of classnames to indexes
-    Arguments:
-        class_to_ind (dict, optional): dictionary lookup of classnames -> indexes
-            (default: alphabetic indexing of VOC's 20 classes)
-        keep_difficult (bool, optional): keep difficult instances or not
-            (default: False)
-        height (int): height
-        width (int): width
+def voc_transform(image, *target):
+    """Transforms the PIL Image and dict target to required format.
+
+    Args:
+        image: PIL Image from torchvision dataset
+        target: dict format annotations from torchvision dataset
+
+    Returns:
+        [image, boxes, labels]
+
     """
     image = np.asarray(image)
+    target = target[0]
     res = []
 
     width = int(target['annotation']['size']['width'])
@@ -67,10 +67,12 @@ def detection_collate(batch):
     for sample in batch:
         images.append(torch.Tensor(sample[0]))
         targets.append(torch.Tensor(sample[1]))
-    return torch.stack(images, 0).permute(0, 3, 1, 2), targets
+    return torch.stack(images, 0).permute(0, 3, 1, 2), torch.stack(targets, 0)
 
 
-def create_voc_dataloader(cfg, augmentation=SSDAugmentation(voc_transform)):
+def create_voc_dataloader(cfg, augmentation):
+    """Create a voc dataloader with custom data augmentation.
+    """
     try:
         dataset = VOCDetection(cfg['dataset_path'], transforms=augmentation)
     except RuntimeError:

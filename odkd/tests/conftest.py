@@ -2,12 +2,13 @@ import os
 
 import pytest
 import torch
-from PIL import Image
 
 from odkd.utils import (
     Config
 )
+from odkd.data.ssd_augments import SSDAugmentation
 from odkd.data import create_dataloader
+from odkd.data.voc import voc_transform
 from odkd.models.ssdlite import ssd_lite
 
 
@@ -52,8 +53,9 @@ def ssdlite(config):
 
 
 @pytest.fixture(scope='session')
-def dataloader(config):
-    return create_dataloader(config)
+def dataloader(config, priors):
+    augment = SSDAugmentation(config, [voc_transform, priors])
+    return create_dataloader(config, augment)
 
 
 @pytest.fixture(scope='session')

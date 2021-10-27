@@ -9,7 +9,7 @@ from itertools import product
 
 from odkd.models._utils import InvertedResidual, SeperableConv2d, _make_divisible
 from odkd.models.backbone import mobilenet_v2, vgg16_bn
-from odkd.models.box_utils import decode
+from odkd.utils.box_utils import decode
 
 
 class Detect(nn.Module):

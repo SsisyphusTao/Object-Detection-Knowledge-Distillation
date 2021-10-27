@@ -4,6 +4,8 @@ import numpy as np
 import types
 from numpy import random
 
+from odkd.utils.box_utils import match
+
 
 def intersect(box_a, box_b):
     max_xy = np.minimum(box_a[:, 2:], box_b[2:])
@@ -146,7 +148,8 @@ class RandomLightingNoise(object):
 
     def __call__(self, image, boxes=None, labels=None):
         if random.randint(2):
-            swap = self.perms[random.randint(len(self.perms))]
+            swap = [0, 1, 2]
+            random.shuffle(swap)
             shuffle = SwapChannels(swap)  # shuffle channels
             image = shuffle(image)
         return image, boxes, labels
@@ -236,8 +239,7 @@ class RandomSampleCrop(object):
         height, width, _ = image.shape
         while True:
             # randomly choose a mode
-            mode = self.sample_options[random.randint(
-                len(self.sample_options))]
+            mode = random.choice(self.sample_options)
             if mode is None:
                 return image, boxes, labels
 
@@ -399,30 +401,38 @@ class PhotometricDistort(object):
         return self.rand_light_noise(im, boxes, labels)
 
 
-class Preprocess(object):
-    """Transforms the PIL Image and dict target to required format.
+class AnchorMatch(object):
+    def __init__(self, config, priors):
+        self.threshold = config['overlap_thresh']
+        self.variance = config['variance']
+        self.priors = priors
 
-    Args:
-        image: PIL Image from torchvision dataset
-        target: dict format annotations from torchvision dataset
-
-    Returns:
-        [image, boxes, labels]
-    """
-
-    def __init__(self, preprocess) -> None:
-        self.preprocess = preprocess
-
-    def __call__(self, image, *target):
-        return self.preprocess(image, target[0])
+    def __call__(self, image, boxes, labels):
+        boxes = torch.Tensor(boxes)
+        labels = torch.Tensor(labels)
+        boxes, labels = match(self.threshold, boxes,
+                              self.priors, self.variance, labels)
+        return image, boxes, labels
 
 
 class SSDAugmentation(object):
-    def __init__(self, preprocess, size=300, mean=(104, 117, 123)):
-        self.mean = mean
-        self.size = size
+    """Augmentations for ssd training.
+
+    Args:
+        config: (dict) training config
+        processes: (list) components for custom transforms
+
+    Return:
+        image: (array) shape (size, size, 3)
+        target: (tensor) shape (num_priors, 5)
+
+    """
+
+    def __init__(self, config, processes):
+        self.mean = config['mean']
+        self.size = config['input_size']
         self.augment = Compose([
-            Preprocess(preprocess),
+            Lambda(processes.pop(0)),
             ConvertFromInts(),
             ToAbsoluteCoords(),
             PhotometricDistort(),
@@ -431,7 +441,8 @@ class SSDAugmentation(object):
             RandomMirror(),
             ToPercentCoords(),
             Resize(self.size),
-            SubtractMeans(self.mean)
+            SubtractMeans(self.mean),
+            AnchorMatch(config, processes.pop(0))
         ])
 
     def __call__(self, img, target):

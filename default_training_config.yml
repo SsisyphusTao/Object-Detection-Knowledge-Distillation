@@ -7,6 +7,7 @@ epochs: 100
 initial_learning_rate: 1e-4
 start_iter: 0
 resume: null
+mean: [104, 117, 123]
 
 # Evaluation
 period: 1
