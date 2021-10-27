@@ -23,9 +23,8 @@ class Config(dict):
         super().__init__()
         self.update(arguments)
 
-        self._required = {'Training': {'dataset', 'dataset_path', 'batch_size', 'epochs', 'initial_learning_rate'},
-                          'Evaluation': {'period'},
-                          'Task': {'distillation', 'target_net'}}
+        self._required = {'dataset', 'dataset_path', 'batch_size', 'epochs',
+                          'initial_learning_rate', 'period', 'distillation', 'target_net'}
 
     def parse_args(self, argv=None):
         """Take command line arguments and updating parameters.
@@ -53,9 +52,9 @@ class Config(dict):
                 # Loading parameters from config file, this will overwrite the same parameter.
                 self.update(yaml.safe_load(config_file))
         self['local_rank'] = args.local_rank
-        self['Training']['distributed'] = False
+        self['distributed'] = False
         if 'WORLD_SIZE' in os.environ:
-            self['Training']['distributed'] = (
+            self['distributed'] = (
                 int(os.environ['WORLD_SIZE']) > 1 and torch.distributed.is_available())
 
     def print(self):
@@ -73,7 +72,3 @@ class Config(dict):
         if missing:
             raise KeyError(missing)
 
-        for i in self._required:
-            missing = self._required[i].difference(set(self[i].keys()))
-            if missing:
-                raise KeyError(missing)

@@ -237,4 +237,4 @@ def ssd_lite(model_name, config):
         'vgg16': vgg16_bn().features,
         'vgg19': vgg16_bn().features
     }
-    return SSDLite(backbones[model_name], config['SSDLite'])
+    return SSDLite(backbones[model_name], config)

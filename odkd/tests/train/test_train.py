@@ -1,10 +1,7 @@
 from odkd.train import (
     Trainer
 )
-from odkd.tests import (
-    config
-)
 
 
-def test_train():
+def test_train(config):
     Trainer(config)
