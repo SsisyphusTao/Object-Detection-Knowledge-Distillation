@@ -1,7 +1,7 @@
 # Training
 dataset: voc
 dataset_path: ~/data
-batch_size: 8
+batch_size: 32
 workers: 8
 epochs: 100
 initial_learning_rate: 1e-4

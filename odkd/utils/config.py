@@ -30,7 +30,7 @@ class Config(dict):
         """Take command line arguments and updating parameters.
 
         Args:
-            argv (list): FOR_TEST.
+            argv (list): take commend line parameters from list
 
         """
 
