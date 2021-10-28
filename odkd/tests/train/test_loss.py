@@ -12,7 +12,7 @@ def test_multiboxloss(config, predictions, targets):
 
 
 def test_netwithloss(config, ssdlite, dataloader):
-    loss = NetwithLoss(config, ssdlite)    
+    loss = NetwithLoss(config, ssdlite)
     for images, targets in dataloader:
         l = loss.forward(images, targets)
         print(l.item())

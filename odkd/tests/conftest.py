@@ -32,7 +32,7 @@ def num_priors(config):
 
 
 @pytest.fixture(scope='session')
-def location(config, num_priors):
+def localization(config, num_priors):
     return torch.randn(config['batch_size'], num_priors, 4, dtype=torch.float32)
 
 
@@ -64,5 +64,5 @@ def targets(config, num_priors):
 
 
 @pytest.fixture(scope='session')
-def predictions(location, confidence, priors):
-    return location, confidence, priors
+def predictions(localization, confidence, priors):
+    return localization, confidence, priors

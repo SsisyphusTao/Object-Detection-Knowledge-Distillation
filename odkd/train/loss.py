@@ -2,8 +2,7 @@
 see https://proceedings.neurips.cc/paper/2017/file/e1e32e235eee1f970470a3a6658dfdd5-Paper.pdf for more details."""
 import torch
 from torch import nn
-import torch.nn.functional as F
-from odkd.utils.box_utils import match, log_sum_exp
+from odkd.utils.box_utils import log_sum_exp
 
 
 # def weighted_KL_div(ps, qt, pos_w, neg_w):
@@ -53,6 +52,9 @@ class MultiBoxLoss(nn.Module):
         self.num_classes = config['num_classes']
         self.negpos_ratio = config['neg_pos']
 
+        self.localization_loss = nn.SmoothL1Loss(reduction='sum')
+        self.confidence_loss = nn.CrossEntropyLoss(reduction='sum')
+
     def forward(self, predictions, targets):
         """Multibox Loss
         Args:
@@ -66,49 +68,49 @@ class MultiBoxLoss(nn.Module):
                 shape: [batch_size,num_objs,5] (last idx is the label).
         """
         loc, conf, _ = predictions
-        loc_t = targets[..., :-1]
-        conf_t = targets[..., -1].type(torch.int64)
-        num = loc.size(0)  # batch_size
+        loc_gt = targets[..., :-1]
+        conf_gt = targets[..., -1:].long()
 
-        pos = conf_t > 0  # positive label from ground truth
+        pos = conf_gt > 0  # positive label from ground truth
         num_pos = pos.sum(dim=1, keepdim=True)
+        pos_idx = pos.expand_as(loc)
 
-        # Localization Loss (Smooth L1)-----------------------------------------
-        # Shape: [batch,num_priors,4]
-        pos_idx = pos.unsqueeze(pos.dim()).expand_as(loc)
         # select out the box should be positive from predictions
-        loc_p = loc[pos_idx].view(-1, 4)
-        loc_t = loc_t[pos_idx].view(-1, 4)  # same as above
-        loss_l = F.smooth_l1_loss(loc_p, loc_t, reduction='sum')
+        loc = loc[pos_idx]
+        loc_gt = loc_gt[pos_idx]
+        loss_loc = self.localization_loss(loc, loc_gt)
 
         # Compute max conf across batch for hard negative mining
-        batch_conf = conf.view(-1, self.num_classes)
-        loss_c = log_sum_exp(batch_conf) - \
-            batch_conf.gather(1, conf_t.view(-1, 1))
-        # Conf_loss-------------------------------------------------------------
-        # Hard Negative Mining
-        # loss_c[pos] = 0  # filter out pos boxes for now
-        loss_c[pos.view(-1, 1)] = 0
-        loss_c = loss_c.view(num, -1)
-        _, loss_idx = loss_c.sort(1, descending=True)
+        loss_conf = log_sum_exp(conf) - conf.gather(-1, conf_gt)
+        loss_conf[pos] = 0  # filter out pos boxes for now
+        _, loss_idx = loss_conf.sort(1, descending=True)
         _, idx_rank = loss_idx.sort(1)
-        num_pos = pos.long().sum(1, keepdim=True)
         num_neg = torch.clamp(self.negpos_ratio*num_pos, max=pos.size(1)-1)
         neg = idx_rank < num_neg.expand_as(idx_rank)
 
         # Confidence Loss Including Positive and Negative Examples
-        pos_idx = pos.unsqueeze(2).expand_as(conf)
-        neg_idx = neg.unsqueeze(2).expand_as(conf)
-        conf_p = conf[(pos_idx+neg_idx).gt(0)].view(-1, self.num_classes)
-        targets_weighted = conf_t[(pos+neg).gt(0)]  # gt means greater than(>)
+        pos_idx = pos.expand_as(conf)
+        neg_idx = neg.expand_as(conf)
+        conf = conf[(pos_idx+neg_idx).gt(0)].view(-1, self.num_classes)
+        conf_gt = conf_gt[(pos+neg).gt(0)]
+        loss_conf = self.confidence_loss(conf, conf_gt)
 
-        # modified original code here: add softmax before cross_entropy(!!!)
-        loss_c = F.cross_entropy(conf_p, targets_weighted, reduction='sum')
-
-        return loss_c+loss_l
+        # Sum of losses: L(x,c,l,g) = (Lconf(x, c) + αLloc(x,l,g)) / N
+        return (loss_loc+loss_conf)/num_pos.sum()
 
 
 class NetwithLoss(nn.Module):
+    """Combine loss with model for promoting efficiency when data distribution.
+
+    Args:
+        cfg: (dict) global training config
+        model: (nn.Module) model for training
+
+    Return:
+        loss (torch.Tensor)
+
+    """
+
     def __init__(self, cfg, model):
         super().__init__()
         self.criterion = MultiBoxLoss(cfg)
