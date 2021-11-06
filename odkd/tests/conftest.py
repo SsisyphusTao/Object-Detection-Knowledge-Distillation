@@ -18,6 +18,7 @@ def config():
     cfg.parse_args(['-c', 'default_training_config.yml'])
     cfg['dataset_path'] = os.path.dirname(os.path.realpath(__file__)) + '/data'
     cfg['batch_size'] = 2
+    cfg['epochs'] = 1
     return cfg
 
 

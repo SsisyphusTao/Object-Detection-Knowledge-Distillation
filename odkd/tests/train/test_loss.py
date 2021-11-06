@@ -17,7 +17,6 @@ def test_netwithloss(config, ssdlite, dataloader):
     for images, targets in dataloader:
         l = loss.forward(images, targets)
         print(l.item())
-        break
 
 
 def test_netwithdistillatedloss(config, ssdlite, dataloader):
@@ -25,4 +24,3 @@ def test_netwithdistillatedloss(config, ssdlite, dataloader):
     for images, targets in dataloader:
         l = loss.forward(images, targets)
         print(l.item())
-        break

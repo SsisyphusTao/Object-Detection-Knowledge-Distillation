@@ -93,7 +93,7 @@ class ObjectDistillationLoss(nn.Module):
         self.num_classes = config['num_classes']
         self.negpos_ratio = config['neg_pos']
 
-        self.T = config['temperature']
+        self.temperature = config['temperature']
         self.u = config['u']
         self.pos_w = config['positive_weight']
         self.neg_w = config['negative_weight']
@@ -142,14 +142,14 @@ class ObjectDistillationLoss(nn.Module):
         conf_gt = conf_gt[(pos+neg).gt(0)]
         loss_conf = self.confidence_loss(conf, conf_gt)
         # Knowledge Distillation for Classification with Imbalanced Classes
-        conf = self.softmax(conf/self.T)
-        conf_k = self.softmax(conf_k/self.T)
-        loss_soft = self.weighted_KL_div(conf, conf_k)
+        conf = self.softmax(conf/self.temperature)
+        conf_k = self.softmax(conf_k/self.temperature)
+        loss_soft = self.weighted_kl_div(conf, conf_k)
         loss_cls = self.u * loss_conf + (1 - self.u) * loss_soft
 
         return (loss_cls + self.lmda * loss_reg) / num_pos.sum() + loss_hint * 0.5
 
-    def weighted_KL_div(self, ps, qt):
+    def weighted_kl_div(self, ps, qt):
         eps = 1e-10
         ps = ps + eps
         qt = qt + eps
@@ -158,9 +158,9 @@ class ObjectDistillationLoss(nn.Module):
         log_p[:, 1:] *= self.pos_w
         return -torch.sum(log_p)
 
-    def bounded_regression_loss(self, Rs, Rt, gt, v=0.5):
-        loss = self.mse(Rs, gt)
-        if loss + self.reg_m > self.mse(Rt, gt):
+    def bounded_regression_loss(self, loc, loc_k, loc_gt, v=0.5):
+        loss = self.mse(loc, loc_gt)
+        if loss + self.reg_m > self.mse(loc_k, loc_gt):
             return loss * v
         else:
             loss.fill_(0)
@@ -190,7 +190,7 @@ class NetwithLoss(nn.Module):
 
 
 class NetwithDistillatedLoss(nn.Module):
-    """Combine distillated loss function with model 
+    """Combine distillated loss function with model
     for improving efficiency when data distribution.
 
     Args:
