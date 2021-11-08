@@ -9,5 +9,6 @@ dataset_factory = {
 }
 
 
-def create_dataloader(cfg, augmentation):
-    return dataset_factory[cfg['dataset']](cfg, augmentation)
+def create_dataloader(config, augmentation):
+    dataloader = dataset_factory[config['dataset']]
+    return dataloader(config['dataset_path'], config['batch_size'], config['workers'], augmentation)

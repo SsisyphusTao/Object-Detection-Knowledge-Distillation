@@ -70,18 +70,18 @@ def detection_collate(batch):
     return torch.stack(images, 0).permute(0, 3, 1, 2), torch.stack(targets, 0)
 
 
-def create_voc_dataloader(cfg, augmentation):
+def create_voc_dataloader(dataset_path, batch_size, num_worker, augmentation):
     """Create a voc dataloader with custom data augmentation.
     """
     try:
-        dataset = VOCDetection(cfg['dataset_path'], transforms=augmentation)
+        dataset = VOCDetection(dataset_path, transforms=augmentation)
     except RuntimeError:
-        dataset = VOCDetection(cfg['dataset_path'],
+        dataset = VOCDetection(dataset_path,
                                transform=augmentation, download=True)
-    nw = min([os.cpu_count(), cfg['batch_size'] if cfg['batch_size']
-             > 1 else 0, cfg['workers']])  # number of workers
+    nw = min([os.cpu_count(), batch_size if batch_size
+             > 1 else 0, num_worker])  # number of workers
     # sampler = torch.utils.data.distributed.DistributedSampler(dataset)
-    return DataLoader(dataset, cfg['batch_size'],
+    return DataLoader(dataset, batch_size,
                       num_workers=nw,
                       collate_fn=detection_collate,
                       pin_memory=True)
