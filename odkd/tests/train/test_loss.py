@@ -1,7 +1,8 @@
 from odkd.train.loss import (
     MultiBoxLoss,
     NetwithLoss,
-    NetwithDistillatedLoss
+    NetwithDistillatedLoss,
+    ObjectDistillationLoss
 )
 
 
@@ -13,14 +14,16 @@ def test_multiboxloss(config, predictions, targets):
 
 
 def test_netwithloss(config, ssdlite, dataloader):
-    loss = NetwithLoss(config, ssdlite)
+    criterion = MultiBoxLoss(config)
+    loss = NetwithLoss(criterion, ssdlite)
     for images, targets in dataloader:
         l = loss.forward(images, targets)
         print(l.item())
 
 
 def test_netwithdistillatedloss(config, ssdlite, dataloader):
-    loss = NetwithDistillatedLoss(config, ssdlite, ssdlite)
+    criterion = ObjectDistillationLoss(config)
+    loss = NetwithDistillatedLoss(criterion, ssdlite, ssdlite)
     for images, targets in dataloader:
         l = loss.forward(images, targets)
         print(l.item())

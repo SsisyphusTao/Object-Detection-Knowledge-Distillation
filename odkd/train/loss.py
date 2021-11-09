@@ -49,7 +49,7 @@ class MultiBoxLoss(nn.Module):
             knowledge (tuple): teacher model's predictions.
 
         """
-        loc, conf, _ = predictions
+        loc, conf = predictions
         loc_gt = targets[..., :-1]
         conf_gt = targets[..., -1:].long()
 
@@ -106,8 +106,8 @@ class ObjectDistillationLoss(nn.Module):
         self.softmax = nn.Softmax(1)
 
     def forward(self, predictions, knowledge, targets):
-        loc, conf, _ = predictions
-        loc_k, conf_k, _ = knowledge
+        loc, conf = predictions
+        loc_k, conf_k = knowledge
         loc_gt = targets[..., :-1]
         conf_gt = targets[..., -1:].long()
 
@@ -179,9 +179,9 @@ class NetwithLoss(nn.Module):
 
     """
 
-    def __init__(self, cfg, model):
+    def __init__(self, criterion, model):
         super().__init__()
-        self.criterion = MultiBoxLoss(cfg)
+        self.criterion = criterion
         self.model = model
 
     def forward(self, images, targets):
@@ -202,9 +202,9 @@ class NetwithDistillatedLoss(nn.Module):
 
     """
 
-    def __init__(self, cfg, model, dist_model):
+    def __init__(self, criterion, model, dist_model):
         super().__init__()
-        self.criterion = ObjectDistillationLoss(cfg)
+        self.criterion = criterion
         self.model = model
         self.dist_model = dist_model
 

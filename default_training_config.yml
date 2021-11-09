@@ -1,45 +1,20 @@
 # Training
-dataset: voc
+
 dataset_path: ~/data
 batch_size: 32
 workers: 8
 epochs: 100
-initial_learning_rate: 1e-4
+optimizer: sgd
+initial_learning_rate: 0.0001
 start_iter: 0
 resume: null
-mean: [104, 117, 123]
 
 # Evaluation
 period: 1
 
 # Task
 distillation: false
-distillated_net: vgg16
-target_net: mobilenetv2
-
-# SSDLite
-input_size: 300
-num_classes: 27
-feature_maps_size: [19, 10, 5, 3, 2, 1]
-steps: [16, 32, 64, 100, 150, 300]
-min_sizes: [60, 105, 150, 195, 240, 285]
-max_sizes: [105, 150, 195, 240, 285, 330]
-aspect_ratios: [[2, 3], [2, 3], [2, 3], [2, 3], [2, 3], [2, 3]]
-variance: [0.1, 0.2]
-clip: true
-
-topK: 200
-conf_thresh: 0.01
-nms_thresh: 0.45
-
-overlap_thresh: 0.5
-neg_pos: 3
-
-# Loss
-temperature: 1.0
-negative_weight: 1.5
-positive_weight: 1.0
-regression_margin: 0
-regression_weight: 1.0
-hint_weight: 0.5
-u: 0.5
+teacher_backbone: vgg16
+student_backbone: mobilenetv2
+dataset: voc
+detection: ssd

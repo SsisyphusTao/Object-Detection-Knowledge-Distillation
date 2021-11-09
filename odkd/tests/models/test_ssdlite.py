@@ -1,12 +1,26 @@
 import torch
 from odkd.models.ssdlite import (
     Detect,
+    create_priorbox,
     ssd_lite
 )
 
 
+def test_create_priorbox(config, num_priors):
+    priorbox = create_priorbox(config['input_size'], config['feature_maps_size'],
+                               config['steps'], config['max_sizes'], config['min_sizes'],
+                               config['aspect_ratios'], config['clip'])
+    print(priorbox.shape)
+    assert priorbox.shape == torch.Size([num_priors, 4])
+
+
 def test_detect(config, priors, localization, confidence):
-    detect = Detect(config, priors)
+    detect = Detect(config['num_classes'],
+                    config['topK'],
+                    config['variance'],
+                    config['conf_thresh'],
+                    config['nms_thresh'],
+                    priors)
     output = detect(localization, confidence)
     print(output.shape)
     assert output.shape == torch.Size(
@@ -14,18 +28,18 @@ def test_detect(config, priors, localization, confidence):
 
 
 def test_vgg16_ssdlite(config, input_tensor, priors, localization, confidence):
+    config['priors'] = priors
     ssdlite = ssd_lite('vgg16', config)
-    test_localization, test_confidence, test_priors = ssdlite(input_tensor)
-    print(test_localization.shape, test_confidence.shape, test_priors.shape)
+    test_localization, test_confidence = ssdlite(input_tensor)
+    print(test_localization.shape, test_confidence.shape)
     assert test_localization.shape == localization.shape
     assert test_confidence.shape == confidence.shape
-    assert test_priors.shape == priors.shape
 
 
 def test_mobilenetv2_ssdlite(config, input_tensor, priors, localization, confidence):
+    config['priors'] = priors
     ssdlite = ssd_lite('mobilenetv2', config)
-    test_localization, test_confidence, test_priors = ssdlite(input_tensor)
-    print(test_localization.shape, test_confidence.shape, test_priors.shape)
+    test_localization, test_confidence = ssdlite(input_tensor)
+    print(test_localization.shape, test_confidence.shape)
     assert test_localization.shape == localization.shape
     assert test_confidence.shape == confidence.shape
-    assert test_priors.shape == priors.shape

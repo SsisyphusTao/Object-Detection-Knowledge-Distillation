@@ -12,6 +12,53 @@ from odkd.models.backbone import mobilenet_v2, vgg16_bn
 from odkd.utils.box_utils import decode
 
 
+def create_priorbox(input_size,
+                    feature_maps_size,
+                    steps, max_sizes,
+                    min_sizes,
+                    aspect_ratios,
+                    clip, **kwargs):
+    """Compute priorbox coordinates in center-offset form for each source
+    feature map.
+
+    Args:
+        cfg (dict): SSDLite config including prior boxes parameters
+
+    Return:
+        Prior boxes
+
+    """
+
+    # number of priors for feature map location (either 4 or 6)
+    mean = []
+    for k, f in enumerate(feature_maps_size):
+        for i, j in product(range(f), repeat=2):
+            f_k = input_size / steps[k]
+            # unit center x,y
+            cx = (j + 0.5) / f_k
+            cy = (i + 0.5) / f_k
+
+            # aspect_ratio: 1
+            # rel size: min_size
+            s_k = min_sizes[k]/input_size
+            mean += [cx, cy, s_k, s_k]
+
+            # aspect_ratio: 1
+            # rel size: sqrt(s_k * s_(k+1))
+            s_k_prime = sqrt(s_k * (max_sizes[k]/input_size))
+            mean += [cx, cy, s_k_prime, s_k_prime]
+
+            # rest of aspect ratios
+            for ar in aspect_ratios[k]:
+                mean += [cx, cy, s_k*sqrt(ar), s_k/sqrt(ar)]
+                mean += [cx, cy, s_k/sqrt(ar), s_k*sqrt(ar)]
+    # back to torch land
+    output = torch.Tensor(mean).view(-1, 4)
+    if clip:
+        output.clamp_(max=1, min=0)
+    return output
+
+
 class Detect(nn.Module):
     """At test time, Detect is the final layer of SSD.  Decode location preds,
     apply non-maximum suppression to location predictions based on conf
@@ -28,13 +75,13 @@ class Detect(nn.Module):
             Shape: [1,num_classes,topK,5]
     """
 
-    def __init__(self, cfg, prior_data):
+    def __init__(self, num_classes, topK, variance, conf_thresh, nms_thresh, prior_data):
         super().__init__()
-        self.num_classes = cfg['num_classes']
-        self.top_k = cfg['topK']
-        self.variance = cfg['variance']
-        self.conf_thresh = cfg['conf_thresh']
-        self.nms_thresh = cfg['nms_thresh']
+        self.num_classes = num_classes
+        self.top_k = topK
+        self.variance = variance
+        self.conf_thresh = conf_thresh
+        self.nms_thresh = nms_thresh
         self.prior_data = prior_data
         self.num_priors = self.prior_data.size(0)
 
@@ -90,17 +137,23 @@ class SSDLite(nn.Module):
         cfg (dict): default prior boxex config.
     """
 
-    def __init__(self, features, cfg, width_mult=1.0, div_nearest=8):
+    def __init__(self,
+                 features,
+                 input_size,
+                 num_classes,
+                 feature_maps_size,
+                 topK,
+                 variance,
+                 conf_thresh,
+                 nms_thresh,
+                 priors,
+                 width_mult=1.0,
+                 div_nearest=8):
         super().__init__()
 
-        self.num_classes = cfg['num_classes']
-        self.feature_maps_size = cfg['feature_maps_size']
-        self.input_size = cfg['input_size']
-        self.steps = cfg['steps']
-        self.min_sizes = cfg['min_sizes']
-        self.max_sizes = cfg['max_sizes']
-        self.aspect_ratios = cfg['aspect_ratios']
-        self.clip = cfg['clip']
+        self.num_classes = num_classes
+        self.feature_maps_size = feature_maps_size
+        self.input_size = input_size
 
         self.features = nn.ModuleList(features)
 
@@ -108,49 +161,9 @@ class SSDLite(nn.Module):
             return _make_divisible(x * width_mult, div_nearest)
 
         self.add_extras(div)
-        self.priors = self.create_priorbox()
-        self.detect = Detect(cfg, self.priors)
 
-    def create_priorbox(self):
-        """Compute priorbox coordinates in center-offset form for each source
-        feature map.
-
-        Args:
-            cfg (dict): SSDLite config including prior boxes parameters
-
-        Return:
-            Prior boxes
-
-        """
-
-        # number of priors for feature map location (either 4 or 6)
-        mean = []
-        for k, f in enumerate(self.feature_maps_size):
-            for i, j in product(range(f), repeat=2):
-                f_k = self.input_size / self.steps[k]
-                # unit center x,y
-                cx = (j + 0.5) / f_k
-                cy = (i + 0.5) / f_k
-
-                # aspect_ratio: 1
-                # rel size: min_size
-                s_k = self.min_sizes[k]/self.input_size
-                mean += [cx, cy, s_k, s_k]
-
-                # aspect_ratio: 1
-                # rel size: sqrt(s_k * s_(k+1))
-                s_k_prime = sqrt(s_k * (self.max_sizes[k]/self.input_size))
-                mean += [cx, cy, s_k_prime, s_k_prime]
-
-                # rest of aspect ratios
-                for ar in self.aspect_ratios[k]:
-                    mean += [cx, cy, s_k*sqrt(ar), s_k/sqrt(ar)]
-                    mean += [cx, cy, s_k/sqrt(ar), s_k*sqrt(ar)]
-        # back to torch land
-        output = torch.Tensor(mean).view(-1, 4)
-        if self.clip:
-            output.clamp_(max=1, min=0)
-        return output
+        self.detect = Detect(num_classes, topK, variance,
+                             conf_thresh, nms_thresh, priors)
 
     def add_extras(self, div):
         idx = 0
@@ -226,7 +239,7 @@ class SSDLite(nn.Module):
         conf = torch.cat([i.view(i.size(0), -1) for i in conf], 1)
 
         if self.training:
-            return loc.view(loc.size(0), -1, 4), conf.view(conf.size(0), -1, self.num_classes), self.priors
+            return loc.view(loc.size(0), -1, 4), conf.view(conf.size(0), -1, self.num_classes)
         else:
             return self.detect(loc.view(loc.size(0), -1, 4), conf.view(conf.size(0), -1, self.num_classes))
 
@@ -234,7 +247,14 @@ class SSDLite(nn.Module):
 def ssd_lite(model_name, config):
     backbones = {
         'mobilenetv2': mobilenet_v2().features,
-        'vgg16': vgg16_bn().features,
-        'vgg19': vgg16_bn().features
+        'vgg16': vgg16_bn().features
     }
-    return SSDLite(backbones[model_name], config)
+    return SSDLite(backbones[model_name],
+                   config['input_size'],
+                   config['num_classes'],
+                   config['feature_maps_size'],
+                   config['topK'],
+                   config['variance'],
+                   config['conf_thresh'],
+                   config['nms_thresh'],
+                   config['priors'])

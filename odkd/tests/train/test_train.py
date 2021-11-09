@@ -1,7 +1,8 @@
 from odkd.train import (
-    Trainer
+    SSDTrainer
 )
 
 
-def test_train(config):
-    Trainer(config)
+def test_ssdtrainer(config):
+    trainer = SSDTrainer(config)
+    trainer.train_one_epoch(0)

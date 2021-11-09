@@ -4,6 +4,44 @@ import argparse
 import yaml
 import torch
 
+DEFAULT = {
+    'SSDLITE': {
+        'input_size': 300,
+        'num_classes': 27,
+        'feature_maps_size': [19, 10, 5, 3, 2, 1],
+        'steps': [16, 32, 64, 100, 150, 300],
+        'min_sizes': [60, 105, 150, 195, 240, 285],
+        'max_sizes': [105, 150, 195, 240, 285, 330],
+        'aspect_ratios': [[2, 3], [2, 3], [2, 3], [2, 3], [2, 3], [2, 3]],
+        'variance': [0.1, 0.2],
+        'clip': True,
+        'topK': 200,
+        'conf_thresh': 0.01,
+        'nms_thresh': 0.45,
+        'overlap_thresh': 0.5,
+        'neg_pos': 3
+    },
+
+    'SSD_DIST_LOSS': {
+        'temperature': 1.0,
+        'negative_weight': 1.5,
+        'positive_weight': 1.0,
+        'regression_margin': 0,
+        'regression_weight': 1.0,
+        'hint_weight': 0.5,
+        'u': 0.5
+    },
+
+    'VOC_TRANS': {
+        'mean': [104, 117, 123]
+    },
+
+    'SGD': {
+        'momentum': 0.9, 
+        'weight_decay': 5e-4
+    }
+}
+
 
 class Config(dict):
     """This is a config dict for determing every details through training.
@@ -21,10 +59,9 @@ class Config(dict):
 
     def __init__(self, arguments: dict = ()):
         super().__init__()
+        for i in DEFAULT.values():
+            self.update(i)
         self.update(arguments)
-
-        self._required = {'dataset', 'dataset_path', 'batch_size', 'epochs',
-                          'initial_learning_rate', 'period', 'distillation', 'target_net'}
 
     def parse_args(self, argv=None):
         """Take command line arguments and updating parameters.
@@ -60,15 +97,3 @@ class Config(dict):
     def print(self):
         """ Print all content values with a pretty way."""
         print(yaml.dump(dict(self), sort_keys=False, default_flow_style=False))
-
-    def check(self):
-        """ Check if all required arguments are defined
-
-        Returns:
-            list: Return the missing arguments.
-
-        """
-        missing = set(self._required).difference(set(self.keys()))
-        if missing:
-            raise KeyError(missing)
-

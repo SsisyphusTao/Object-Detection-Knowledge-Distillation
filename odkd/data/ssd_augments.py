@@ -402,9 +402,9 @@ class PhotometricDistort(object):
 
 
 class AnchorMatch(object):
-    def __init__(self, config, priors):
-        self.threshold = config['overlap_thresh']
-        self.variance = config['variance']
+    def __init__(self, threshold, variance, priors):
+        self.threshold = threshold
+        self.variance = variance
         self.priors = priors
 
     def __call__(self, image, boxes, labels):
@@ -428,11 +428,11 @@ class SSDAugmentation(object):
 
     """
 
-    def __init__(self, config, processes):
-        self.mean = config['mean']
-        self.size = config['input_size']
+    def __init__(self, size, mean, threshold, variance, priors, preprocess):
+        self.mean = mean
+        self.size = size
         self.augment = Compose([
-            Lambda(processes.pop(0)),
+            Lambda(preprocess),
             ConvertFromInts(),
             ToAbsoluteCoords(),
             PhotometricDistort(),
@@ -442,7 +442,7 @@ class SSDAugmentation(object):
             ToPercentCoords(),
             Resize(self.size),
             SubtractMeans(self.mean),
-            AnchorMatch(config, processes.pop(0))
+            AnchorMatch(threshold, variance, priors)
         ])
 
     def __call__(self, img, target):
