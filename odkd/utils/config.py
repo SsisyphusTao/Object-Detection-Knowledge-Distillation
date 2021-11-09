@@ -39,6 +39,10 @@ DEFAULT = {
     'SGD': {
         'momentum': 0.9,
         'weight_decay': 5e-4
+    },
+
+    'STEPS': {
+        'milestones': [120, 180]
     }
 }
 
@@ -93,4 +97,10 @@ class Config(dict):
 
     def print(self):
         """ Print all content values with a pretty way."""
-        print(yaml.dump(dict(self), sort_keys=False, default_flow_style=False))
+        print(yaml.dump(self, sort_keys=False, default_flow_style=False))
+
+    def dump(self, path):
+        with open(os.path.join(path, 'config.yaml'), 'w') as f:
+            for i, j in self.items():
+                if isinstance(j, (int, str, float, list, tuple, dict)):
+                    f.write(yaml.dump({i: j}))

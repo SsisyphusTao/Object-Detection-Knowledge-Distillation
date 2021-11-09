@@ -10,7 +10,7 @@ dataset_factory = {
 }
 
 augmentation_factory = {
-    'ssd': [SSDAugmentation, {'voc': voc_transform}]
+    'ssdlite': [SSDAugmentation, {'voc': voc_transform}]
 }
 
 

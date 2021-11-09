@@ -6,9 +6,7 @@ import torch
 from odkd.utils import (
     Config
 )
-from odkd.data.ssd_augments import SSDAugmentation
 from odkd.data import create_dataloader, create_augmentation
-from odkd.data.voc import voc_transform
 from odkd.models.ssdlite import ssd_lite, create_priorbox
 
 
@@ -18,7 +16,7 @@ def config():
     cfg.parse_args(['-c', 'default_training_config.yml'])
     cfg['dataset_path'] = os.path.dirname(os.path.realpath(__file__)) + '/data'
     cfg['batch_size'] = 2
-    cfg['epochs'] = 1
+    cfg['epochs'] = 2
     return cfg
 
 
@@ -51,7 +49,8 @@ def priors(config):
 
 
 @pytest.fixture(scope='session')
-def ssdlite(config):
+def ssdlite(config, priors):
+    config['priors'] = priors
     return ssd_lite('mobilenetv2', config)
 
 

@@ -6,7 +6,7 @@ __all__ = [
 ]
 
 trainer_factory = {
-    'ssd': SSDTrainer
+    'ssdlite': SSDTrainer
 }
 
 

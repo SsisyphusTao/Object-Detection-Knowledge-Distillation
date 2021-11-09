@@ -1,13 +1,14 @@
 # Training
-
 dataset_path: ~/data
+checkpoints_path: ~/checkpoints
 batch_size: 32
 workers: 8
 epochs: 100
 optimizer: sgd
+scheduler: steps
+milestones: [120, 180]
 initial_learning_rate: 0.0001
 start_iter: 0
-resume: null
 
 # Evaluation
 period: 1
@@ -17,4 +18,4 @@ distillation: false
 teacher_backbone: vgg16
 student_backbone: mobilenetv2
 dataset: voc
-detection: ssd
+detection: ssdlite

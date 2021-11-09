@@ -1,14 +1,26 @@
 import torch
 
+
 optimizer_factory = {
-    'sgd': [torch.optim.SGD, {'momentum': 0.9, 'weight_decay': 5e-4}],
-    'adam': [torch.optim.Adam, {}]
+    'sgd': (torch.optim.SGD, {'lr': 'initial_learning_rate', 'momentum': 'momentum', 'weight_decay': 'weight_decay'}),
+    'adam': (torch.optim.Adam, {'lr': 'initial_learning_rate'})
+}
+
+scheduler_factory = {
+    'steps': (torch.optim.lr_scheduler.MultiStepLR, {'milestones': 'milestones'}),
+    'cosine': (torch.optim.lr_scheduler.CosineAnnealingLR, {'T_max': 'epochs'})
 }
 
 
 def create_optimizer(config):
     optimizer, args = optimizer_factory[config['optimizer'].lower()]
-    for i in args:
-        args[i] = config[i]
-    args['lr'] = config['initial_learning_rate']
+    for i, j in args.items():
+        args[i] = config[j] if isinstance(j, str) else j
     return lambda x: optimizer(x, **args)
+
+
+def create_scheduler(config):
+    scheduler, args = scheduler_factory[config['scheduler'].lower()]
+    for i, j in args.items():
+        args[i] =  config[j] if isinstance(j, str) else j
+    return lambda x: scheduler(x, **args)
