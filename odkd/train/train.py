@@ -9,6 +9,13 @@ from .loss import MultiBoxLoss, NetwithLoss, ObjectDistillationLoss, NetwithDist
 
 
 class Trainer(ABC):
+    """Base train class, parsing config to pipeline.
+
+    Args:
+        config (dict): All parameters needed for training
+
+    """
+
     def __init__(self, config: Config) -> None:
         self.config = config
         self.parse_config()
@@ -28,12 +35,13 @@ class Trainer(ABC):
             loss.backward()
             self.optimizer.step()
             mloss = (mloss * i + loss.item()) / (i + 1)  # update mean losses
-            s = ('[%s], %s Total:%.4f, iter:%03d') % (time.asctime(time.localtime(
+            return ('[%s], %s Total:%.4f, iter:%03d') % (time.asctime(time.localtime(
                 time.time())), 'Epoch:[%g/%g]' % (epoch, self.config['epochs']), mloss, i)
-        return s
 
 
 class SSDTrainer(Trainer):
+    """Specifying the pipeline of SSD training or distillation"""
+
     def parse_config(self):
         self.config['priors'] = create_priorbox(**self.config)
         self.config['augmentation'] = create_augmentation(self.config)

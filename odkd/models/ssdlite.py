@@ -22,13 +22,20 @@ def create_priorbox(input_size,
     feature map.
 
     Args:
-        cfg (dict): SSDLite config including prior boxes parameters
+        input_size (int): Size of input Image
+        feature_maps_size (list): Size of each feature maps in pyramid
+        steps (list) : Strides of each feature maps compared with input
+        max_sizes (list): Max sizes of boxes in each feature maps
+        min_sizes (list): Min sizes of boxes in each feature maps
+        aspect_ratios (list): Ratios of box sides from min to max
+        clip (bool): Whether allow boxes outside the image
+        kwargs (dict): other argss
 
     Return:
         Prior boxes
 
     """
-
+    del kwargs
     # number of priors for feature map location (either 4 or 6)
     mean = []
     for k, f in enumerate(feature_maps_size):
@@ -66,7 +73,11 @@ class Detect(nn.Module):
     confidence score and locations.
 
     Args:
-        cfg: (dict) SSD config including inference parameters
+        num_classes: (dict) Number of classes
+        topK: (int) TopK objects for NMS
+        variance: (list) Variance of Prior boxes for encoding/decoding
+        conf_thresh: (float) Confidence threshold
+        nms_thresh: (float) NMS threshold
         prior_data: (tensor) Prior boxes and variances from priorbox layers
             Shape: [1,num_priors,4]
 
@@ -129,7 +140,15 @@ class SSDLite(nn.Module):
     """SSDlite detect head which only has 3000 anchors
 
     Args:
-        cfg (int): SSDLite config
+        features (Tensor): Image features from backbone
+        input_size (int): Size of input Image
+        num_classes (int): Number of classes
+        feature_maps_size (list): Size of each feature maps in pyramid
+        topK (int): TopK objects for NMS
+        variance (list): Variance of Prior boxes for encoding/decoding
+        conf_thresh (float): Confidence threshold
+        nms_thresh (float): NMS threshold
+        priors (Tensor): Prior boxes and variances from priorbox layers
         width_mult (:obj:`float`, optional): scale ratio of channel width
         div_nearest (:obj:`int`, optional): multiple of channels
 

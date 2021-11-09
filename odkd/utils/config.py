@@ -37,7 +37,7 @@ DEFAULT = {
     },
 
     'SGD': {
-        'momentum': 0.9, 
+        'momentum': 0.9,
         'weight_decay': 5e-4
     }
 }
@@ -51,9 +51,6 @@ class Config(dict):
 
     Args:
         arguments (dict): Arguments for training.
-
-    Attributes:
-        required (set): Keys of minimum required arguments.
 
     """
 
