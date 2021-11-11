@@ -26,4 +26,9 @@ def create_augmentation(config):
 
 def create_dataloader(config):
     dataloader = dataset_factory[config['dataset']]
-    return dataloader(config['dataset_path'], config['batch_size'], config['workers'], config['augmentation'])
+    return dataloader(config['dataset_path'],
+                      config['batch_size'],
+                      config['workers'],
+                      config['augmentation'],
+                      config['local_rank'],
+                      config['world_size'])
