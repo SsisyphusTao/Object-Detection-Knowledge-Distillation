@@ -3,6 +3,8 @@
 ![version](https://img.shields.io/badge/version-beta_0.0.1-brightgreen.svg)
 ![coverage](https://codecov.io/github/SsisyphusTao/SSD-Knowledge-Distillation/coverage.svg?branch=dev)
 
+The function of this branch is not complete. For [ssd](https://github.com/SsisyphusTao/SSD-Knowledge-Distillation/tree/mbv2-lite) and [yolov5](https://github.com/SsisyphusTao/Object-Detection-Knowledge-Distillation/tree/yolov5) distillation, checking other branches. 
+
 Release edition is coming Soon...
 
 ## Update
