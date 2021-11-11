@@ -8,6 +8,6 @@ def test_config():
         'MODE': 'Test'
     }
     config = Config(test_arguments)
-    config.parse_args(['-c', 'default_training_config.yml'])
+    config.parse_args(['default_training_config.yml'])
     config['TestPass'] = True
     config.print()

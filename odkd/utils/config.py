@@ -1,8 +1,9 @@
 """This moudule contains config class for training."""
 import os
+import sys
+import shutil
 import argparse
 import yaml
-import torch
 
 DEFAULT = {
     'SSDLITE': {
@@ -77,30 +78,43 @@ class Config(dict):
 
         parser = argparse.ArgumentParser(
             description='Object Detection Knowledge Distillation.')
-        parser.add_argument('--train_config', '-c',
-                            default='', type=str,
+        parser.add_argument('train_config', type=str,
                             help='YAML config to determine training parameters')
+        parser.add_argument('--template', '-t', action='store_true',
+                            default=False, help='Create config template')
         parser.add_argument('--local_rank',
-                            default=0, type=int,
+                            default=-1, type=int,
                             help='Used for multi-process training.')
         args = parser.parse_args(argv)
+
+        if args.template:
+            template_path = os.path.join(os.path.dirname(
+                os.path.realpath(__file__)), 'template.yml')
+            if '.yml' in args.train_config:
+                shutil.copyfile(template_path, args.train_config)
+                print('Created config template: %s' % args.train_config)
+            else:
+                shutil.copyfile(template_path, os.path.join(
+                    args.train_config, 'config_template.yml'))
+                print('Created config template: %s' % os.path.join(
+                    args.train_config, 'config_template.yml'))
+            sys.exit(0)
 
         if args.train_config:
             with open(args.train_config, 'r', encoding='utf-8') as config_file:
                 # Loading parameters from config file, this will overwrite the same parameter.
                 self.update(yaml.safe_load(config_file))
         self['local_rank'] = args.local_rank
-        self['distributed'] = False
-        if 'WORLD_SIZE' in os.environ:
-            self['distributed'] = (
-                int(os.environ['WORLD_SIZE']) > 1 and torch.distributed.is_available())
+        self['world_size'] = int(os.getenv('WORLD_SIZE', '1'))
+        if self['local_rank'] != -1:
+            self['cuda'] = True
 
     def print(self):
         """ Print all content values with a pretty way."""
         print(yaml.dump(self, sort_keys=False, default_flow_style=False))
 
     def dump(self, path):
-        with open(os.path.join(path, 'config.yaml'), 'w') as f:
+        with open(os.path.join(path, 'config.yaml'), 'w', encoding='utf-8') as f:
             for i, j in self.items():
                 if isinstance(j, (int, str, float, list, tuple, dict)):
                     f.write(yaml.dump({i: j}))

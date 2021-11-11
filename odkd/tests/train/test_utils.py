@@ -1,4 +1,3 @@
-from torch.optim import optimizer
 from odkd.train._utils import create_optimizer, create_scheduler
 
 

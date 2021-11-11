@@ -13,10 +13,11 @@ from odkd.models.ssdlite import ssd_lite, create_priorbox
 @pytest.fixture(scope='session')
 def config():
     cfg = Config()
-    cfg.parse_args(['-c', 'default_training_config.yml'])
+    cfg.parse_args(['default_training_config.yml'])
     cfg['dataset_path'] = os.path.dirname(os.path.realpath(__file__)) + '/data'
     cfg['batch_size'] = 2
     cfg['epochs'] = 2
+    cfg['cuda'] = False
     return cfg
 
 
