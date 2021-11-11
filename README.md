@@ -21,9 +21,9 @@ $ python setup.py install --user
 
 $ odkd-train ./training_config.yml -t
 
-$ odkd_train training_config.yml
+$ odkd-train training_config.yml
 or
-$ python -m torch.distributed.launch --nproc_per_node=2 `which odkd_train` training_config.yml
+$ python -m torch.distributed.launch --nproc_per_node=2 `which odkd-train` training_config.yml
 ```
 
 ## TODO
