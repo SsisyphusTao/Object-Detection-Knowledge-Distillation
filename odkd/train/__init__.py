@@ -2,6 +2,7 @@ from odkd.train.train import SSDTrainer
 
 
 __all__ = [
+    'create_trainer',
     'SSDTrainer'
 ]
 
@@ -10,6 +11,6 @@ trainer_factory = {
 }
 
 
-def create_ssd_trainer(config):
+def create_trainer(config):
     trainer = trainer_factory[config['detection']]
-    return trainer()
+    return trainer(config)

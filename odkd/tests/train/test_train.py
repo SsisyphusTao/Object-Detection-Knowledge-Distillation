@@ -1,8 +1,8 @@
 from odkd.train import (
-    SSDTrainer
+    create_trainer
 )
 
 
 def test_ssdtrainer(config):
-    trainer = SSDTrainer(config)
-    trainer.train()
+    trainer = create_trainer(config)
+    trainer.start()
