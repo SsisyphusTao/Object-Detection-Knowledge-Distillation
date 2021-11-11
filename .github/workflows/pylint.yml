@@ -23,4 +23,4 @@ jobs:
         pip install pylint==2.10.2
     - name: Analysing the code with pylint
       run: |
-        pylint --rcfile=pylint.conf --output-format=colorized --fail-under=9.5 odkd
+        pylint --rcfile=pylint.conf --output-format=colorized --fail-under=9.75 odkd
