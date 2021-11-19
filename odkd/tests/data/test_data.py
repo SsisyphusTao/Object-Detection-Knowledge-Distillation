@@ -1,5 +1,5 @@
-from odkd.data import create_augmentation, create_dataloader
-
+from odkd.data import create_dataloader
+from odkd.data.transforms import create_augmentation
 
 def test_create_augmentation(config, priors):
     config['priors'] = priors

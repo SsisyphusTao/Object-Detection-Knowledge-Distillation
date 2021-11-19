@@ -1,3 +1,4 @@
+"""Training class collections"""
 from abc import ABC, abstractmethod
 import time
 import os
@@ -6,9 +7,10 @@ import torch
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from odkd.utils import Config
-from odkd.data import create_augmentation, create_dataloader
+from odkd.data import create_dataloader
+from odkd.data.transforms import create_augmentation
 from odkd.models.ssdlite import create_priorbox, ssd_lite
-from ._utils import create_optimizer
+from ._utils import create_optimizer, create_scheduler
 from .loss import MultiBoxLoss, NetwithLoss, ObjectDistillationLoss, NetwithDistillatedLoss
 
 
@@ -33,6 +35,7 @@ class Trainer(ABC):
     def parse_config(self):
         assert hasattr(self, 'dataloader')
         assert hasattr(self, 'optimizer')
+        assert hasattr(self, 'scheduler')
         assert hasattr(self, 'compute_loss')
         assert hasattr(self, 'model')
         if self.config['cuda']:
@@ -83,6 +86,7 @@ class Trainer(ABC):
     def start(self):
         for i in range(self.config['epochs']):
             self.train_one_epoch(i)
+            self.scheduler.step()
             print('\n')
             if self.config['local_rank'] in [-1, 0]:
                 torch.save(self.model.state_dict(), path.join(self.config['student_path'], '%s_%s_%03d.pth' % (
@@ -96,12 +100,14 @@ class SSDTrainer(Trainer):
         self.config['priors'] = create_priorbox(**self.config)
         self.config['augmentation'] = create_augmentation(self.config)
         self.dataloader = create_dataloader(self.config)
-        optimizer = create_optimizer(self.config)
+        self.optimizer = create_optimizer(self.config)
+        self.scheduler = create_scheduler(self.config)
 
         self.dist_model = ssd_lite(
             self.config['teacher_backbone'], self.config)
         self.model = ssd_lite(self.config['student_backbone'], self.config)
-        self.optimizer = optimizer(self.model.parameters())
+        self.optimizer = self.optimizer(self.model.parameters())
+        self.scheduler = self.scheduler(self.optimizer)
 
         if self.config['distillation']:
             loss = ObjectDistillationLoss(self.config)

@@ -6,7 +6,8 @@ import torch
 from odkd.utils import (
     Config
 )
-from odkd.data import create_dataloader, create_augmentation
+from odkd.data import create_dataloader
+from odkd.data.transforms import create_augmentation
 from odkd.models.ssdlite import ssd_lite, create_priorbox
 
 
