@@ -2,7 +2,7 @@
 """SSDLite detector relative blocks"""
 import torch
 from torch import nn
-from torchvision.ops import nms
+from torchvision.ops import nms, batched_nms
 
 from math import sqrt
 from itertools import product
@@ -104,36 +104,26 @@ class Detect(nn.Module):
             conf_data: (tensor) Shape: Conf preds from conf layers
                 Shape: [batch*num_priors,num_classes]
         """
-        num = loc_data.size(0)  # batch size
 
-        output = torch.zeros(num, self.num_classes, self.top_k, 5)
-        conf_preds = conf_data.view(num, self.num_priors,
-                                    self.num_classes).transpose(2, 1)
+        output = []
+        conf_data = torch.nn.functional.softmax(conf_data, -1)
+        scores_data, cls_data = conf_data.max(-1)
 
-        # Decode predictions into bboxes.
-        for i in range(num):
-            # here change the offset to percentage of the scale
-            decoded_boxes = decode(loc_data[i], self.prior_data, self.variance)
-            # For each class, perform nms
-            conf_scores = conf_preds[i].clone()
+        for boxes, scores, idxs in zip(loc_data, scores_data, cls_data):
+            decoded_boxes = decode(boxes, self.prior_data, self.variance)
+            pos = scores.gt(self.conf_thresh)
+            out_idx = batched_nms(
+                decoded_boxes[pos], scores[pos], idxs[pos], self.nms_thresh)[:self.top_k]
 
-            for cl in range(1, self.num_classes):
-                c_mask = conf_scores[cl].gt(self.conf_thresh)
-                scores = conf_scores[cl][c_mask]
-                if scores.size(0) == 0:
-                    continue
-                l_mask = c_mask.unsqueeze(1).expand_as(decoded_boxes)
-                boxes = decoded_boxes[l_mask].view(-1, 4)
-                # idx of highest scoring and non-overlapping boxes per class
-                idx = nms(boxes, scores, self.nms_thresh)[:self.top_k]
-                output[i, cl, :idx.size(0)] = \
-                    torch.cat((scores[idx].unsqueeze(1),
-                               boxes[idx]), 1)
-        flt = output.contiguous().view(num, -1, 5)
-        _, idx = flt[:, :, 0].sort(1, descending=True)
-        _, rank = idx.sort(1)
-        flt[(rank < self.top_k).unsqueeze(-1).expand_as(flt)].fill_(0)
-        return output
+            result = torch.zeros(self.top_k, 6).to(boxes.device)
+            result[:out_idx.size(0)] = torch.cat((decoded_boxes[pos][out_idx],
+                                                  scores[pos][out_idx].unsqueeze(
+                                                      1),
+                                                  idxs[pos][out_idx].unsqueeze(1)), 1)
+
+            output.append(result)
+
+        return torch.stack(output)
 
 
 class SSDLite(nn.Module):

@@ -24,7 +24,7 @@ def test_detect(config, priors, localization, confidence):
     output = detect(localization, confidence)
     print(output.shape)
     assert output.shape == torch.Size(
-        [config['batch_size'], config['num_classes'], config['topK'], 5])
+        [config['batch_size'], config['topK'], 6])
 
 
 def test_vgg16_ssdlite(config, input_tensor, priors, localization, confidence):

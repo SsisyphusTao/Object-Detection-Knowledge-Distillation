@@ -8,7 +8,7 @@ import yaml
 DEFAULT = {
     'SSDLITE': {
         'input_size': 300,
-        'num_classes': 27,
+        'num_classes': 21,
         'feature_maps_size': [19, 10, 5, 3, 2, 1],
         'steps': [16, 32, 64, 100, 150, 300],
         'min_sizes': [60, 105, 150, 195, 240, 285],
