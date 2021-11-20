@@ -67,16 +67,27 @@ def detection_collate(batch):
     for sample in batch:
         images.append(torch.Tensor(sample[0]))
         targets.append(torch.Tensor(sample[1]))
-    return torch.stack(images, 0).permute(0, 3, 1, 2), torch.stack(targets, 0)
+    try:
+        targets = torch.stack(targets, 0)
+    except:
+        pass
+    return torch.stack(images, 0).permute(0, 3, 1, 2), targets
 
 
-def create_voc_dataloader(dataset_path, batch_size, num_worker, augmentation, local_rank=-1, world_size=1):
+def create_voc_dataloader(image_set,
+                          dataset_path,
+                          batch_size,
+                          num_worker,
+                          augmentation,
+                          local_rank=-1,
+                          world_size=1):
     """Create a voc dataloader with custom data augmentation.
     """
     try:
-        dataset = VOCDetection(dataset_path, transforms=augmentation)
+        dataset = VOCDetection(
+            dataset_path, image_set=image_set, transforms=augmentation)
     except RuntimeError:
-        dataset = VOCDetection(dataset_path,
+        dataset = VOCDetection(dataset_path, image_set=image_set,
                                transform=augmentation, download=True)
     nw = min([os.cpu_count() // world_size, batch_size if batch_size
              > 1 else 0, num_worker])  # number of workers

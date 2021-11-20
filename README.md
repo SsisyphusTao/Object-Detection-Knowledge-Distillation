@@ -15,6 +15,10 @@ Release edition is coming Soon...
 
 3. Very friendly beginner guidance.
 
+4. System Architecture
+
+![odkd](http://assets.processon.com/chart_image/6198ae621efad406f87a16ec.png)
+
 ## Useage
 ```
 $ python setup.py install --user

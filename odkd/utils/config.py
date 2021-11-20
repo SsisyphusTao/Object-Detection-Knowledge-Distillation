@@ -56,14 +56,16 @@ class Config(dict):
 
     Args:
         arguments (dict): Arguments for training.
+        argv (list): take commend line parameters from list
 
     """
 
-    def __init__(self, arguments: dict = ()):
+    def __init__(self, arguments: dict = (), argv=None):
         super().__init__()
         for i in DEFAULT.values():
             self.update(i)
         self.update(arguments)
+        self.parse_args(argv)
 
     def parse_args(self, argv=None):
         """Take command line arguments and updating parameters.
