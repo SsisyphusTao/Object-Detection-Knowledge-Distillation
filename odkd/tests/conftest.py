@@ -11,7 +11,7 @@ from odkd.interface import create_dataloader, create_augmentation, create_ssdlit
 
 @pytest.fixture(scope='session')
 def config():
-    cfg = Config(argv=['default_training_config.yml'])
+    cfg = Config(argv=['odkd/utils/template.yml'])
     cfg['dataset_path'] = os.path.dirname(os.path.realpath(__file__)) + '/data'
     cfg['batch_size'] = 2
     cfg['epochs'] = 2
