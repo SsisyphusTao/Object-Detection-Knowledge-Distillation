@@ -69,7 +69,7 @@ def detection_collate(batch):
         targets.append(torch.Tensor(sample[1]))
     try:
         targets = torch.stack(targets, 0)
-    except:
+    except RuntimeError:
         pass
     return torch.stack(images, 0).permute(0, 3, 1, 2), targets
 

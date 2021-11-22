@@ -6,9 +6,7 @@ import torch
 from odkd.utils import (
     Config
 )
-from odkd.data import create_dataloader
-from odkd.data.transforms import create_augmentation
-from odkd.models.ssdlite import ssd_lite, create_priorbox
+from odkd.interface import create_dataloader, create_augmentation, create_ssdlite, create_priorbox
 
 
 @pytest.fixture(scope='session')
@@ -52,13 +50,13 @@ def priors(config):
 @pytest.fixture(scope='session')
 def ssdlite(config, priors):
     config['priors'] = priors
-    return ssd_lite('mobilenetv2', config)
+    return create_ssdlite('mobilenetv2', config)
 
 
 @pytest.fixture(scope='session')
 def dataloader(config, augmentation):
     config['augmentation'] = augmentation
-    return create_dataloader(config)
+    return create_dataloader(config, image_set='train')
 
 
 @pytest.fixture(scope='session')

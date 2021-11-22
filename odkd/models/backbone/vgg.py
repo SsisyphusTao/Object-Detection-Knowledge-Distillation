@@ -23,6 +23,7 @@ model_urls = {
 
 
 class VGG(nn.Module):
+    """Vgg implementation from torchvision"""
 
     def __init__(
         self,

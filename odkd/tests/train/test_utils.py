@@ -1,8 +1,9 @@
-from odkd.train._utils import create_optimizer, create_scheduler
+from odkd.interface import create_optimizer, create_scheduler
 
 
 def test_create_scheduler(config, ssdlite):
-    optimizer = create_optimizer(config)(ssdlite.parameters())
-    scheduler = create_scheduler(config)(optimizer)
+    config['params'] = ssdlite.parameters()
+    optimizer = config['optimizer'] = create_optimizer(config)
+    scheduler = create_scheduler(config)
     optimizer.step()
     scheduler.step()

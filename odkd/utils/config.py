@@ -120,3 +120,9 @@ class Config(dict):
             for i, j in self.items():
                 if isinstance(j, (int, str, float, list, tuple, dict)):
                     f.write(yaml.dump({i: j}))
+
+    def __getitem__(self, __k):
+        if isinstance(__k, tuple):
+            return {k:self[k] for k in __k if k in self}
+        else:
+            return super().__getitem__(__k)

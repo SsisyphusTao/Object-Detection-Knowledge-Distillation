@@ -419,7 +419,11 @@ class SSDAugmentation(object):
     """Augmentations for ssd training.
 
     Args:
-        config: (dict) training config
+        input_size: (int) input tensor size
+        mean: (list | float) mean value of dataset
+        overlap_thresh: (float) threshold for anchor matching
+        variance: (list of float) variances for encoding prior boxes
+        priors: (tensor) prior boxes
         processes: (list) components for custom transforms
 
     Return:
@@ -428,9 +432,9 @@ class SSDAugmentation(object):
 
     """
 
-    def __init__(self, size, mean, threshold, variance, priors, preprocess):
+    def __init__(self, input_size, mean, overlap_thresh, variance, priors, preprocess):
         self.mean = mean
-        self.size = size
+        self.size = input_size
         self.augment = Compose([
             Lambda(preprocess),
             ConvertFromInts(),
@@ -442,7 +446,7 @@ class SSDAugmentation(object):
             ToPercentCoords(),
             Resize(self.size),
             SubtractMeans(self.mean),
-            AnchorMatch(threshold, variance, priors)
+            AnchorMatch(overlap_thresh, variance, priors)
         ])
 
     def __call__(self, img, target):

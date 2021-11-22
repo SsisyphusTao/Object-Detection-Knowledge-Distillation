@@ -1,9 +1,6 @@
 import torch
-from odkd.models.ssdlite import (
-    Detect,
-    create_priorbox,
-    ssd_lite
-)
+from odkd.models.ssdlite import Detect, create_priorbox
+from odkd.interface import create_ssdlite
 
 
 def test_create_priorbox(config, num_priors):
@@ -29,7 +26,7 @@ def test_detect(config, priors, localization, confidence):
 
 def test_vgg16_ssdlite(config, input_tensor, priors, localization, confidence):
     config['priors'] = priors
-    ssdlite = ssd_lite('vgg16', config)
+    ssdlite = create_ssdlite('vgg16', config)
     test_localization, test_confidence = ssdlite(input_tensor)
     print(test_localization.shape, test_confidence.shape)
     assert test_localization.shape == localization.shape
@@ -38,7 +35,7 @@ def test_vgg16_ssdlite(config, input_tensor, priors, localization, confidence):
 
 def test_mobilenetv2_ssdlite(config, input_tensor, priors, localization, confidence):
     config['priors'] = priors
-    ssdlite = ssd_lite('mobilenetv2', config)
+    ssdlite = create_ssdlite('mobilenetv2', config)
     test_localization, test_confidence = ssdlite(input_tensor)
     print(test_localization.shape, test_confidence.shape)
     assert test_localization.shape == localization.shape

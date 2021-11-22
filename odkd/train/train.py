@@ -7,10 +7,9 @@ import torch
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from odkd.utils import Config
-from odkd.data import create_dataloader
-from odkd.data.transforms import create_augmentation
-from odkd.models.ssdlite import create_priorbox, ssd_lite
-from ._utils import create_optimizer, create_scheduler
+from odkd.interface import (create_dataloader, create_augmentation,
+                            create_ssdlite, create_priorbox,
+                            create_optimizer, create_scheduler)
 from .loss import MultiBoxLoss, NetwithLoss, ObjectDistillationLoss, NetwithDistillatedLoss
 
 
@@ -90,25 +89,35 @@ class Trainer(ABC):
             print('\n')
             if self.config['local_rank'] in [-1, 0]:
                 torch.save(self.model.state_dict(), path.join(self.config['student_path'], '%s_%s_%03d.pth' % (
-                    self.config['student_backbone'], self.config['detection'], i+1)))
+                    self.config['student_backbone'], self.config['model'], i+1)))
 
 
 class SSDTrainer(Trainer):
     """Specifying the pipeline of SSD training or distillation"""
 
     def parse_config(self):
+        # Prior boxes
         self.config['priors'] = create_priorbox(**self.config)
+
+        # dataloader
         self.config['augmentation'] = create_augmentation(self.config)
-        self.dataloader = create_dataloader(self.config)
-        self.optimizer = create_optimizer(self.config)
+        self.dataloader = create_dataloader(self.config, image_set='train')
+
+        # Model
+        self.dist_model = create_ssdlite(
+            self.config['teacher_backbone'], self.config)
+        self.model = create_ssdlite(
+            self.config['student_backbone'], self.config)
+
+        # Optimizer
+        self.config['params'] = self.model.parameters()
+        self.optimizer = self.config['optimizer'] = create_optimizer(
+            self.config)
+
+        # Scheduler
         self.scheduler = create_scheduler(self.config)
 
-        self.dist_model = ssd_lite(
-            self.config['teacher_backbone'], self.config)
-        self.model = ssd_lite(self.config['student_backbone'], self.config)
-        self.optimizer = self.optimizer(self.model.parameters())
-        self.scheduler = self.scheduler(self.optimizer)
-
+        # Loss
         if self.config['distillation']:
             loss = ObjectDistillationLoss(self.config)
             self.compute_loss = NetwithDistillatedLoss(

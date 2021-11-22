@@ -12,6 +12,8 @@ model_urls = {
 
 
 class MobileNetV2(nn.Module):
+    """Mobilenetv2 implementation from torchvision"""
+
     def __init__(self,
                  width_mult=1.0,
                  inverted_residual_setting=None,

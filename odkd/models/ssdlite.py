@@ -2,13 +2,12 @@
 """SSDLite detector relative blocks"""
 import torch
 from torch import nn
-from torchvision.ops import nms, batched_nms
+from torchvision.ops import batched_nms
 
 from math import sqrt
 from itertools import product
 
 from odkd.models._utils import InvertedResidual, SeperableConv2d, _make_divisible
-from odkd.models.backbone import mobilenet_v2, vgg16_bn
 from odkd.utils.box_utils import decode
 
 
@@ -251,19 +250,3 @@ class SSDLite(nn.Module):
             return loc.view(loc.size(0), -1, 4), conf.view(conf.size(0), -1, self.num_classes)
         else:
             return self.detect(loc.view(loc.size(0), -1, 4), conf.view(conf.size(0), -1, self.num_classes))
-
-
-def ssd_lite(model_name, config):
-    backbones = {
-        'mobilenetv2': mobilenet_v2().features,
-        'vgg16': vgg16_bn().features
-    }
-    return SSDLite(backbones[model_name],
-                   config['input_size'],
-                   config['num_classes'],
-                   config['feature_maps_size'],
-                   config['topK'],
-                   config['variance'],
-                   config['conf_thresh'],
-                   config['nms_thresh'],
-                   config['priors'])

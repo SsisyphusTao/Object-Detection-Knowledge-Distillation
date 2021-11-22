@@ -12,5 +12,5 @@ trainer_factory = {
 
 
 def create_trainer(config):
-    trainer = trainer_factory[config['detection']]
+    trainer = trainer_factory[config['model']]
     return trainer(config)
