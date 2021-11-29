@@ -105,7 +105,7 @@ class Detect(nn.Module):
         """
 
         output = []
-        conf_data = torch.nn.functional.softmax(conf_data, -1)
+        conf_data = torch.nn.functional.softmax(conf_data, -1)[..., 1:]
         scores_data, cls_data = conf_data.max(-1)
 
         for boxes, scores, idxs in zip(loc_data, scores_data, cls_data):

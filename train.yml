@@ -3,11 +3,11 @@ dataset_path: ~/data
 checkpoints_path: ~/checkpoints
 batch_size: 64
 num_worker: 8
-epochs: 100
+epochs: 300
 optim: sgd
 scheduler: steps
 milestones: [120, 180]
-lr: 0.0001
+lr: 0.001
 start_iter: 0
 cuda: true
 
