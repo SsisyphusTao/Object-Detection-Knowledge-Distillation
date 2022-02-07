@@ -81,9 +81,9 @@ class Config(dict):
         parser = argparse.ArgumentParser(
             description='Object Detection Knowledge Distillation.')
         parser.add_argument('train_config', type=str,
-                            help='YAML config to determine training parameters')
+                            help='YAML config to determine training parameters.')
         parser.add_argument('--template', '-t', action='store_true',
-                            default=False, help='Create config template')
+                            default=False, help='Create config template.')
         parser.add_argument('--local_rank',
                             default=-1, type=int,
                             help='Used for multi-process training.')
@@ -123,6 +123,6 @@ class Config(dict):
 
     def __getitem__(self, __k):
         if isinstance(__k, tuple):
-            return {k:self[k] for k in __k if k in self}
+            return {k: self[k] for k in __k if k in self}
         else:
             return super().__getitem__(__k)

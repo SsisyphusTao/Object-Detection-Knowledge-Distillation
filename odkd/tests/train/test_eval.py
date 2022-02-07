@@ -1,8 +1,8 @@
 from odkd.train.eval import Evaluator
-from odkd.data.transforms.base import BaseTransform
+from odkd.interface import create_transform
 
 
-def test_eval(config):
-    e = Evaluator(config)
-    config['augmentation'] = BaseTransform(300, (127, 127, 127))
-    e.evaluate_one_batch()
+def test_eval(config, ssdlite):
+    config['augmentation'] = create_transform(config)
+    e = Evaluator(ssdlite, config)
+    e.eval_once()

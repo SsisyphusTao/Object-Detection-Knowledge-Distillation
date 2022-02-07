@@ -9,4 +9,7 @@ def create_dataloader(config, **kwargs):
 
     args = config[dataloader.__code__.co_varnames[:dataloader.__code__.co_argcount]]
     args.update(kwargs)
+    if args['image_set'] == 'val':
+        args['local_rank'] = -1
+        args['world_size'] = 1
     return dataloader(**args)

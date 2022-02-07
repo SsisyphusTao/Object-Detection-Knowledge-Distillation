@@ -16,5 +16,6 @@ setup(
     install_requires=parse_requirements('requirements.txt'),
     packages=find_packages(),
     package_data={'odkd.utils': ['template.yml']},
-    entry_points={'console_scripts': ['odkd-train = odkd:run_train']},
+    entry_points={'console_scripts': [
+        'odkd-train = odkd:run_train', 'odkd-eval = odkd:run_eval']},
 )

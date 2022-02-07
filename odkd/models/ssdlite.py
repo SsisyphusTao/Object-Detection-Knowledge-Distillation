@@ -92,7 +92,7 @@ class Detect(nn.Module):
         self.variance = variance
         self.conf_thresh = conf_thresh
         self.nms_thresh = nms_thresh
-        self.prior_data = prior_data
+        self.prior_data = nn.Parameter(prior_data)
         self.num_priors = self.prior_data.size(0)
 
     def forward(self, loc_data, conf_data):

@@ -2,3 +2,4 @@ torch>=1.2.0
 torchvision>=0.4.0
 pyyaml>=5.3
 opencv-python
+tqdm

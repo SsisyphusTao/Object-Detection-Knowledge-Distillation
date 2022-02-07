@@ -28,6 +28,8 @@ $ odkd-train ./training_config.yml -t
 $ odkd-train training_config.yml
 or
 $ python -m torch.distributed.launch --nproc_per_node=2 `which odkd-train` training_config.yml
+
+$ odkd-eval ${CHECKPOINTS_PATH}/${RUN_INDEX}/config.yml
 ```
 
 ## TODO

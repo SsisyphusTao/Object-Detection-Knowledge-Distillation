@@ -1,9 +1,7 @@
 import sys
 
 from odkd.utils import Config
-from odkd.train import create_trainer
-from odkd.train.eval import Evaluator
-from odkd.data.transforms.base import BaseTransform
+from odkd.train import create_evaluator, create_trainer
 
 
 def run_train():
@@ -20,9 +18,8 @@ def run_train():
 def run_eval():
     try:
         config = Config()
-        config['augmentation'] = BaseTransform(300, (127, 127, 127))
-        trainer = Evaluator(config)
-        trainer.evaluate_one_batch()
+        evaluator = create_evaluator(config)
+        evaluator.eval_once()
     except KeyboardInterrupt:
         if config['local_rank'] in [-1, 0]:
             print('\nStopped by user.')

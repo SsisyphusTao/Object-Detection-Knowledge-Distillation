@@ -108,8 +108,8 @@ def match(threshold, truths, priors, variances, labels):
     conf = labels[best_truth_idx] + 1         # Shape: [num_priors]
     conf[best_truth_overlap < threshold] = 0  # label as background
     loc = encode(matches, priors, variances)
-    return loc, conf # [num_priors,4] encoded offsets to learn, 
-                     # [num_priors] top class label for each prior
+    return loc, conf  # [num_priors,4] encoded offsets to learn,
+    # [num_priors] top class label for each prior
 
 
 def encode(matched, priors, variances):

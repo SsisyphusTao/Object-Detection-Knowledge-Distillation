@@ -11,6 +11,7 @@ from odkd.interface import (create_dataloader, create_augmentation,
                             create_ssdlite, create_priorbox,
                             create_optimizer, create_scheduler)
 from .loss import MultiBoxLoss, NetwithLoss, ObjectDistillationLoss, NetwithDistillatedLoss
+from .eval import Evaluator
 
 
 class Trainer(ABC):
@@ -37,6 +38,7 @@ class Trainer(ABC):
         assert hasattr(self, 'scheduler')
         assert hasattr(self, 'compute_loss')
         assert hasattr(self, 'model')
+        assert hasattr(self, 'evaluator')
         if self.config['cuda']:
             self.compute_loss = self.compute_loss.cuda()
             if self.config['local_rank'] != -1:
@@ -81,15 +83,18 @@ class Trainer(ABC):
             if self.config['local_rank'] in [-1, 0]:
                 print(('\r[%s], %s Total:%.4f, iter:%03d') % (time.asctime(time.localtime(
                     time.time())), 'Epoch:[%g/%g]' % (epoch+1, self.config['epochs']), mloss, i), end='')
+        print('')
 
     def start(self):
         for i in range(self.config['epochs']):
             self.train_one_epoch(i)
             self.scheduler.step()
-            print('\n')
             if self.config['local_rank'] in [-1, 0]:
-                torch.save(self.model.state_dict(), path.join(self.config['student_path'], '%s_%s_%03d.pth' % (
-                    self.config['student_backbone'], self.config['model'], i+1)))
+                self.evaluator.eval_once()
+                self.config['last'] = path.join(self.config['student_path'], '%s_%s_%03d.pth' % (
+                    self.config['student_backbone'], self.config['model'], i+1))
+                torch.save(self.model.state_dict(), self.config['last'])
+                self.config.dump(self.config['save_dir'])
 
 
 class SSDTrainer(Trainer):
@@ -99,7 +104,7 @@ class SSDTrainer(Trainer):
         # Prior boxes
         self.config['priors'] = create_priorbox(**self.config)
 
-        # dataloader
+        # Dataloader
         self.config['augmentation'] = create_augmentation(self.config)
         self.dataloader = create_dataloader(self.config, image_set='train')
 
@@ -125,5 +130,8 @@ class SSDTrainer(Trainer):
         else:
             loss = MultiBoxLoss(self.config)
             self.compute_loss = NetwithLoss(loss, self.model)
+
+        # Evaluator
+        self.evaluator = Evaluator(self.model, self.config)
 
         super().parse_config()

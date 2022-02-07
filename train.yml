@@ -1,0 +1,23 @@
+# Training
+dataset_path: ~/data
+checkpoints_path: ~/checkpoints
+batch_size: 64
+num_worker: 8
+epochs: 100
+optim: sgd
+scheduler: steps
+milestones: [120, 180]
+lr: 0.0001
+start_iter: 0
+cuda: true
+
+# Evaluation
+period: 1
+
+# Task
+distillation: false
+dataset: voc
+teacher_backbone: vgg16
+student_backbone: mobilenetv2
+model: ssdlite
+
