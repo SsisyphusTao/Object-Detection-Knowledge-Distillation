@@ -1,5 +1,7 @@
 # Object Detection Knowledge Distillation(ODKD)
 
+I’ve started [Hand Mocap Distillation](https://github.com/SsisyphusTao/Hand-Mocap-Distillation) to continue exploring knowledge distillation for hand motion capture.
+
 ![version](https://img.shields.io/badge/version-beta_0.0.1-brightgreen.svg)
 ![coverage](https://codecov.io/github/SsisyphusTao/SSD-Knowledge-Distillation/coverage.svg?branch=dev)
 
